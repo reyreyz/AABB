@@ -1,0 +1,3 @@
+n=31 kh=0.0 w=3: min ||E||2 = 0.2303 (rho there 0.1415, cond P 3.2); rho-optimal w=3: ||E||2 = 0.3458  [8s]
+n=31 kh=0.0 w=5: min ||E||2 = 0.1111 (rho there 0.1111, cond P 3.0); rho-optimal w=3: ||E||2 = 0.3458  [36s]
+n=31 kh=0.0 w=7: min ||E||2 = 0.1111 (rho there 0.1111, cond P 17.8); rho-optimal w=3: ||E||2 = 0.3458  [51s]

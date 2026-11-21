@@ -1,0 +1,1 @@
+kh=0.6 w=7 restarted from w=5 optimum: ||E||2 = 0.2153 (rho 0.2153, cond P 1409.7); previous 0.2263

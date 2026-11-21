@@ -1,0 +1,25 @@
+linear (hat)                 w=3 rho=   5.1304 cond(P)=     1.40 z_med=0.875 eps_med=0.3030 
+local opt, z free>=0.5       w=3 rho=   0.5801 cond(P)=     1.58 z_med=0.904 eps_med=0.2783 
+local opt, z=1               w=3 rho=   0.3661 cond(P)=     1.60 z_med=0.905 eps_med=0.2785 
+constr M=A^2 B=nk1           w=3 rho=      inf cond(P)=9112695579202560.00 z_med=0.899 eps_med=0.2800 constraint resid=2.2e-16
+constr M=A^2 B=lo+nk         w=3 rho=   0.5964 cond(P)=     1.91 z_med=0.823 eps_med=0.3600 constraint resid=4.7e-03
+constr M=A^2 B=nk2           w=3 rho=   0.1869 cond(P)=     1.59 z_med=0.903 eps_med=0.2802 constraint resid=7.6e-03
+invariant stencil, global scan w=3 rho=   0.1111 cond(P)=     1.60 z_med=0.905 eps_med=0.2785 stencil=[0.635, 1.0, 0.635] (0s)
+/usr/local/lib/python3.13/site-packages/numpy/linalg/_linalg.py:2767: RuntimeWarning: overflow encountered in dot
+  sqnorm = x.dot(x)
+TRUE OPT (all P, this support) w=3 rho=   0.1111 cond(P)=     2.65 z_med=0.906 eps_med=0.2794 (8 starts, 31s)
+local opt, z free>=0.5       w=5 rho=   0.2129 cond(P)=     7.48 z_med=1.031 eps_med=0.1485 
+local opt, z=1               w=5 rho=   0.2147 cond(P)=     7.07 z_med=1.030 eps_med=0.1486 
+constr M=A^2 B=nk1           w=5 rho=      inf cond(P)=38046976880066064.00 z_med=1.014 eps_med=0.1641 constraint resid=2.2e-16
+constr M=A^2 B=lo+nk         w=5 rho=   0.4286 cond(P)=     7.99 z_med=0.973 eps_med=0.2171 constraint resid=4.7e-03
+constr M=A^2 B=nk2           w=5 rho=   0.1982 cond(P)=     6.20 z_med=1.024 eps_med=0.1567 constraint resid=7.6e-03
+invariant stencil, global scan w=5 rho=   0.1111 cond(P)=     1.58 z_med=0.904 eps_med=0.2783 stencil=[0.0, 0.625, 1.0, 0.625, 0.0] (5s)
+TRUE OPT (all P, this support) w=5 rho=   0.1111 cond(P)=    12.74 z_med=1.031 eps_med=0.1859 (8 starts, 69s)
+local opt, z free>=0.5       w=7 rho=   0.2878 cond(P)=    32.60 z_med=1.079 eps_med=0.0912 
+local opt, z=1               w=7 rho=   0.2650 cond(P)=    64.91 z_med=1.074 eps_med=0.0934 
+constr M=A^2 B=nk1           w=7 rho=      inf cond(P)=20861155921972612.00 z_med=1.044 eps_med=0.1044 constraint resid=1.7e-16
+constr M=A^2 B=lo+nk         w=7 rho=   0.2549 cond(P)=    20.49 z_med=1.039 eps_med=0.0993 constraint resid=3.1e-15
+constr M=A^2 B=nk2           w=7 rho=   0.2257 cond(P)=    34.29 z_med=1.063 eps_med=0.1038 constraint resid=2.1e-15
+invariant stencil, global scan w=7 rho=   0.1116 cond(P)=    12.77 z_med=1.032 eps_med=0.1817 stencil=[0.0, 0.45, 0.75, 1.0, 0.75, 0.45, 0.0] (13s)
+TRUE OPT (all P, this support) w=7 rho=   0.1111 cond(P)=    19.52 z_med=0.958 eps_med=0.2609 (8 starts, 98s)
+spectral (dense P) optimum rho = 0.2153
