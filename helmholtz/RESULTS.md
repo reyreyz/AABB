@@ -86,3 +86,29 @@ eigenvector coarse space (dense), kh=0.9: 0.493 / 0.49
 - `run_scaling.py`: locality floor (`scaling.txt`).
 - `summarize.py`: the table above (`table.md`).
 - `Popt_*.npy`, `Pnorm_*.npy`: the optimised P matrices.
+
+## Pseudospectra of E (`run_psE.py`, `psE.txt`, `psE_absA.svg`, `psE_2norm.svg`)
+
+Four interpolations: linear, the rho-optimal P (w=3), the ||E||_2-optimal P (w=3), and the eigenvector space (dense).
+Two norms: Euclidean, and |A| = (A^2)^{1/2}, which is the energy norm when kh = 0.
+alpha_eps is the eps-pseudospectral radius. "cycles" is the number of cycles until ||E^m|| <= 1e-8.
+
+- **Poisson calibration.** In the |A|-norm all four E are normal: Henrici departure 0, and alpha_eps = rho + eps.
+  The Euclidean non-normality for Poisson (||E||_2 up to 0.35, departure 0.7 to 0.8) is purely an effect of the norm.
+- **Eigenvector space:** normal in both norms for every kh, with eps-disks around the eigenvalues.
+- **rho-optimal P:** genuinely non-normal for kh >= 0.6, even in the |A|-norm.
+  - Henrici departure 0.96 to 1.00; ||E||_|A| = 0.65 and 1.91; alpha_0.1 = 0.32 and 0.50, against 0.21 for a normal E.
+  - The pseudospectra are concentric disks around the origin, and alpha_eps grows roughly like (eps ||E||)^{1/2}. This is the signature of an index-2 nilpotent coupling, here between the 15 zero eigenvalues of E (rank E = 16) and the rest.
+  - The source is the oblique coarse correction: ||K||_2 = 17, 6.6 and 2.8 at kh = 0.3, 0.6, 0.9, against 1 for the eigenvector space.
+- **The non-normality costs about one cycle, not the convergence rate.** For the rho-optimal P, ||E^m|| ~ ||E|| rho^{m-1}.
+  Cycles to 1e-8:
+
+  | kh | rho-optimal | eigenvector space | ||E||_2-optimal (w=3) |
+  |---|---|---|---|
+  | 0.3 | 10 | 10 | 11 |
+  | 0.6 | 10 | 12 | 12 |
+  | 0.9 | 10 | 27 | 29 |
+
+  rho predicts 8.4 for the rho-optimal P.
+- **Correction to finding 5 above.** ||E||_2 is not the "honest" ranking. The rho-optimal P is the best solver once more than about 2 cycles are run. The pseudospectra of E bulge only at eps >~ 1e-2 and at small |z|, well inside the unit disk, so the non-normality affects one cycle and never the rate.
+- **Linear interpolation.** At kh >= 0.6 it fails through a genuine eigenvalue outside the unit disk (a coarse-grid resonance at 5.13 and 2.78), not through non-normality: alpha_eps is approximately rho + eps.
