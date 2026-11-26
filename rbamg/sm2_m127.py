@@ -40,7 +40,7 @@ def make(m, eps=1e-3, theta=np.pi / 6):
     return A, diag, P
 
 
-def run(m=127, kdim=(200, 300), ks=(2, 4)):
+def run(m=127, kdim=(400, 700), ks=(2, 4)):
     A, diag, P = make(m)
     n, nc = P.shape
     omega = 2.0 / 3.0
@@ -130,7 +130,7 @@ if __name__ == "__main__":
               rb.rho(rb.E_semi(s)), rb.rho(rb.E_nonmarkov(s)))
         sys.exit()
     res = run()
-    print("\n## Table SM2, CD eps=1e-3, m = 127 (Arnoldi dim 200 / 300): ours / paper\n")
-    print("| k | scheme | ours (200) | ours (300) | paper |\n|---|---|---|---|---|")
+    print("\n## Table SM2, CD eps=1e-3, m = 127 (Arnoldi dim 400 / 700): ours / paper\n")
+    print("| k | scheme | ours (400) | ours (700) | paper |\n|---|---|---|---|---|")
     for (k, name), v in res.items():
         print(f"| {k} | {name} | {v[0]:.3f} | {v[1]:.3f} | {PAPER[(k, name)]:.3f} |")
