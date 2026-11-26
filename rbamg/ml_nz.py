@@ -175,7 +175,10 @@ class NZCycle:
                 G3 = (G @ G @ G).tocsr()
                 patt = sp.csr_matrix(G3[F][:, C].T)
                 patt.data[:] = 1.0
-            if markov or zmode == "Q0" or len(self.levels) > z_levels:
+            if callable(zmode) and not markov and len(self.levels) <= z_levels:
+                Z = zmode(dict(K=K, H=H, patt=patt, W=W, A=A, C=C, F=F, omega=om, k=k,
+                               level=len(self.levels) - 1))
+            elif markov or callable(zmode) or zmode == "Q0" or len(self.levels) > z_levels:
                 Z = sp.csr_matrix(patt.shape)
             elif zmode == "LS":
                 Z = z_ls(K, H, patt)
