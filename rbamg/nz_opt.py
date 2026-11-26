@@ -40,9 +40,10 @@ def pattern(s, kind):
         return [np.nonzero(W[j])[0] for j in range(nf)]
     if kind == "dense":
         return [np.arange(nc) for _ in range(nf)]
+    d = int(kind[4:]) if kind.startswith("dist") else 3
     G = (np.abs(s.A) > 0).astype(float)
-    G3 = (G @ G @ G) > 0
-    return [np.nonzero(G3[nc + j, :nc])[0] for j in range(nf)]
+    Gd = np.linalg.matrix_power(G, d) > 0
+    return [np.nonzero(Gd[nc + j, :nc])[0] for j in range(nf)]
 
 
 class Problem:
