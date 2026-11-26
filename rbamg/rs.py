@@ -127,8 +127,32 @@ def direct_interpolation(A, S, split):
     return P, C
 
 
-def ruge_stuben(A, theta=0.25, norm="abs"):
-    """Returns perm (C first, then F, each in natural order), P = [I; W] in C/F order."""
+def ruge_stuben(A, theta=0.25, norm="abs", use_pyamg=True):
+    """Returns perm (C first, then F, each in natural order), P = [I; W] in C/F order.
+
+    Uses PyAMG (classical strength, RS first pass, direct interpolation) when it
+    is installed; the numpy port above reproduces it exactly for the symmetric
+    problems (Poisson, rotated anisotropy with norm='min') but not for every
+    nonsymmetric one."""
+    try:
+        if not use_pyamg:
+            raise ImportError
+        import scipy.sparse as sp
+        from pyamg.strength import classical_strength_of_connection
+        from pyamg.classical.split import RS
+        from pyamg.classical.interpolate import direct_interpolation as di
+        As = sp.csr_matrix(A)
+        Ssp = classical_strength_of_connection(As, theta=theta, norm=norm)
+        split = RS(Ssp, second_pass=False)
+        Pfull = di(As, Ssp, split).toarray()
+        C = np.nonzero(split == C_NODE)[0]
+        F = np.nonzero(split != C_NODE)[0]
+        perm = np.concatenate([C, F])
+        S = Ssp.toarray() != 0
+        np.fill_diagonal(S, False)
+        return perm, Pfull[perm], S
+    except ImportError:
+        pass
     S = classical_strength(A, theta, norm)
     split = rs_cf_splitting(S)
     P, C = direct_interpolation(A, S, split)
