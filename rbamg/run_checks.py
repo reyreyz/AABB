@@ -108,7 +108,7 @@ def table_sm1_poisson(m=31):
 
 
 if __name__ == "__main__":
-    print("Problems marked * use our own discretization (not specified in the paper).")
+    print("Random diffusion (*) uses a stand-in field; the others match the paper (see results_sm1.md).")
     w1 = table_sm9()
     w2 = structural()
     w3 = table_sm1_poisson()
