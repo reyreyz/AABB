@@ -4,3 +4,4 @@ Recirculating flow: stand-in discretization. Each cell: ours / paper.
 
 | problem | method | rho | WU/cycle | nnz(Aσ)/nnz(A) | WU/digit | solves/digit |
 |---|---|---|---|---|---|---|
+Terminated

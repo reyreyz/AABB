@@ -6,3 +6,6 @@
 |---|---|---|---|---|
 | shear | AIR F/C | 60 | 913 | 7.4e+39 (no conv.) |
 | shear | AIR F | 45 | 685 | 8.2e-11 |
+| shear | SA | – | – | failed: ValueError |
+| shear | RS | 60 | 303 | nan (no conv.) |
+Terminated
