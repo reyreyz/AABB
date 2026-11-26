@@ -31,7 +31,7 @@ jax.config.update("jax_enable_x64", True)
 COARSEST = 60
 
 
-def fit_stencil(A_win, k, w, p, starts=12, seed=0, maxiter=600):
+def fit_stencil(A_win, k, w, p, starts=12, seed=0, maxiter=600, lam=0.0):
     n = A_win.shape[0]
     C, F, e, nslot = layout_general(n, w, p)
     perm = np.concatenate([C, F])
@@ -42,7 +42,7 @@ def fit_stencil(A_win, k, w, p, starts=12, seed=0, maxiter=600):
     Phi = np.zeros((len(slots), 2 * nslot))
     Phi[np.arange(len(slots)), slots] = 1.0
     Phi = jnp.array(Phi)
-    f = lambda th: jnp.sum(jnp.linalg.matrix_power(J.KH(Phi @ th)[2], k) ** 2)
+    f = lambda th: jnp.sum(jnp.linalg.matrix_power(J.KH(Phi @ th)[2], k) ** 2) + lam * len(F) * jnp.sum(th ** 2)
     vg = jax.jit(jax.value_and_grad(f))
 
     def fun(th):
@@ -55,7 +55,8 @@ def fit_stencil(A_win, k, w, p, starts=12, seed=0, maxiter=600):
                      method="L-BFGS-B", options=dict(maxiter=maxiter))
         if best is None or r.fun < best.fun:
             best = r
-    return best.x, float(np.sqrt(best.fun / len(F)))
+    Kk = jnp.linalg.matrix_power(J.KH(Phi @ jnp.array(best.x))[2], k)
+    return best.x, float(np.sqrt(np.sum(np.array(Kk) ** 2) / len(F)))
 
 
 def band_cap(A, bw):
@@ -73,8 +74,8 @@ class Level:
 
 class ML1D:
     def __init__(self, A, k=4, w=1, p=2, mode="WZ", window=95, bw=None, theta_cache=None,
-                 max_levels=99, k_coarse=None, w_coarse=None, starts=12):
-        self.k, self.mode = k, mode
+                 max_levels=99, k_coarse=None, w_coarse=None, starts=12, p_coarse=None, lam=0.0, gamma=1):
+        self.k, self.mode, self.gamma = k, mode, gamma
         self.nnz0 = A.nnz
         self.levels = []
         A = sp.csr_matrix(A)
@@ -87,19 +88,20 @@ class ML1D:
             lev = len(self.levels) - 1
             L.k = k if (lev == 0 or k_coarse is None) else k_coarse
             wl = w if (lev == 0 or w_coarse is None) else w_coarse
+            pl = p if (lev == 0 or p_coarse is None) else p_coarse
             if n < COARSEST or len(self.levels) >= max_levels:
                 L.lu = sla.splu(sp.csc_matrix(A))
                 break
-            C, F, e, nslot = layout_general(n, wl, p)
+            C, F, e, nslot = layout_general(n, wl, pl)
             nc, nf = len(C), len(F)
             if mode in ("WZ", "W", "Z"):
                 mid = (n // 2) - (n // 2) % 3 + 0       # window aligned to the 3-periodic split
                 lo = max(0, mid - window // 2)
-                lo -= lo % (3 * p)
+                lo -= lo % (3 * pl)
                 hi = lo + window
                 if hi > n:
                     lo, hi = 0, n
-                th, res = fit_stencil(A[lo:hi][:, lo:hi].toarray(), L.k, wl, p, starts=starts)
+                th, res = fit_stencil(A[lo:hi][:, lo:hi].toarray(), L.k, wl, pl, starts=starts, lam=lam)
                 L.fit_res = res
                 vals = th[np.concatenate([e[:, 2], nslot + e[:, 2]])]
                 nW = len(e)
@@ -167,6 +169,10 @@ class ML1D:
         r = b - A @ (xk + h)
         work[0] += (A.nnz + L.Z.nnz + L.W.nnz) / nz
         e = self.cycle(lev + 1, r[C], np.zeros(len(C)), work)
+        for _ in range(self.gamma - 1):
+            if hasattr(self.levels[lev + 1], "lu"):
+                break
+            e = self.cycle(lev + 1, r[C], e, work)
         out = xk + h
         out[C] += L.PpC @ e
         out[F] += L.PpF @ e
