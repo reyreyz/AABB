@@ -130,13 +130,71 @@ def z_kk(K, H, patt, k, Z0, maxiter=100):
     return build(res.x)
 
 
+def cr_blocks(A, m, offset, omega):
+    """Bilinear P = [I; W] and the CR blocks of damped Jacobi on one level:
+    K = Q0sh T Q0 = T_ff - W T_cf,  H = Q0sh T P = T_fc + T_ff W - W T_cc - W T_cf W."""
+    Pn, mc, isC = bilinear_1level(m, offset)
+    n = A.shape[0]
+    C, F = np.nonzero(isC)[0], np.nonzero(~isC)[0]
+    W = Pn[F].tocsr()
+    D = A.diagonal()
+    T = (sp.eye(n) - omega * sp.diags(1 / D) @ A).tocsr()
+    Tcc, Tcf, Tfc, Tff = T[C][:, C], T[C][:, F], T[F][:, C], T[F][:, F]
+    K = (Tff - W @ Tcf).tocsr()
+    H = (Tfc + Tff @ W - W @ Tcc - W @ (Tcf @ W)).tocsr()
+    return Pn, mc, C, F, W, K, H, D, T
+
+
+def effective_prolongation(W, K, H, Z, k, C, F):
+    """P' = P + Q sum_{l<k} K_Z^l H with Q = Q0 + P Z, natural ordering."""
+    KZ = (K + H @ Z).tocsr()
+    S = H.copy()
+    V = H.copy()
+    for _ in range(k - 1):
+        V = (KZ @ V).tocsr()
+        S = S + V
+    ZS = (Z @ S).tocsr()
+    Ppc = sp.eye(len(C)) + ZS
+    Ppf = (W + S + W @ ZS).tocsr()
+    perm = np.concatenate([C, F])
+    inv = np.empty_like(perm)
+    inv[perm] = np.arange(len(perm))
+    return sp.vstack([Ppc, Ppf]).tocsr()[inv], KZ
+
+
+def cr_rate(K, p=20, seed=0):
+    """CR contraction estimate (||K^p x|| / ||x||)^(1/p), random x."""
+    x = np.random.default_rng(seed).standard_normal(K.shape[0])
+    nx = np.linalg.norm(x)
+    lg = 0.0
+    for _ in range(p):
+        x = K @ x
+        nrm = np.linalg.norm(x)
+        if nrm == 0:
+            return 0.0
+        lg += np.log(nrm / nx)
+        x /= nrm
+        nx = 1.0
+    return float(np.exp(lg / p))
+
+
+def z_lsk(K, H, patt, k):
+    """k-step CR least squares: column j minimizes ||K^{k-1} (K e_j + H z)||_2,
+    z on the pattern (one local LS per fine point, no iteration)."""
+    L = sp.eye(K.shape[0], format="csr")
+    for _ in range(k - 1):
+        L = (L @ K).tocsr()
+    return z_ls((L @ K).tocsr(), (L @ H).tocsr(), patt)
+
+
 class Level:
     pass
 
 
 class NZCycle:
     def __init__(self, A, m, k=2, omega=2 / 3, zmode="LS", tauA=1e-3, markov=False, nnz0=None, offset=1, max_levels=99,
-                 omega_rule="fixed", z_levels=99, pattern="interp", gamma=1):
+                 omega_rule="fixed", z_levels=99, pattern="interp", gamma=1, theta=1.0,
+                 thetas=(0.0, 0.25, 0.5, 0.75, 1.0)):
         self.levels = []
         self.k, self.omega, self.zmode, self.markov = k, omega, zmode, markov
         self.gamma = gamma            # recursive cycles per coarse solve (1: V, 2: W)
@@ -186,6 +244,30 @@ class NZCycle:
                 Z = z_als(K, H, patt, k)
             elif zmode == "Kk":
                 Z = z_kk(K, H, patt, k, z_ls(K, H, patt))
+            elif zmode == "LSk":
+                Z = z_lsk(K, H, patt, k)
+            L.theta, L.cr = 1.0, None
+            if Z.nnz and theta == "auto":
+                # theta minimizing the CR rate of the level pair:
+                #   max( rho(K_{theta Z}),  rho(K_c(theta)) ),
+                # K_c = local CR propagator of the next coarse operator A_sigma(theta Z)
+                best = None
+                for th in thetas:
+                    Zt = (th * Z).tocsr()
+                    Ppt, KZt = effective_prolongation(W, K, H, Zt, k, C, F)
+                    r_f = cr_rate(KZt)
+                    Ac = filter_rowmax((Pn.T @ A @ Ppt).tocsr(), tauA)
+                    if Ac.shape[0] >= COARSEST and mc >= 3:
+                        r_c = cr_rate(cr_blocks(Ac, mc, offset, omega)[5])
+                    else:
+                        r_c = 0.0
+                    if best is None or max(r_f, r_c) < best[0] - 1e-12:
+                        best = (max(r_f, r_c), th, r_f, r_c)
+                L.theta, L.cr = best[1], best[2:]
+                Z = (best[1] * Z).tocsr()
+            elif Z.nnz and theta != 1.0:
+                L.theta = float(theta)
+                Z = (float(theta) * Z).tocsr()
             KZ = (K + H @ Z).tocsr()
             # P' = P + Q sum_{l<k} K_Z^l H, Q = Q0 + P Z  (C/F blocks)
             S = H.copy()
