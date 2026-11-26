@@ -67,6 +67,17 @@ def cd_sparse(m, eps, theta=np.pi / 6):
             + h * np.sin(theta) * sp.kron(D, I)).tocsr()
 
 
+def cd_centered_sparse(m, pe, theta=np.pi / 6):
+    """centered CD on the unit square, cell Peclet max|beta_i| h / eps = pe (h^2-scaled)."""
+    h = 1.0 / (m + 1)
+    bx, by = np.cos(theta), np.sin(theta)
+    eps = max(abs(bx), abs(by)) * h / pe
+    I = sp.eye(m)
+    L1 = sp.diags([-1, 2, -1], [-1, 0, 1], shape=(m, m))
+    D0 = sp.diags([-0.5, 0.5], [-1, 1], shape=(m, m))
+    return (eps * (sp.kron(I, L1) + sp.kron(L1, I)) + h * (bx * sp.kron(I, D0) + by * sp.kron(D0, I))).tocsr()
+
+
 def mask_pattern(W):
     """pattern of Z (nc x nf) = transpose of the pattern of W (nf x nc)."""
     Wt = sp.csr_matrix(W.T)
@@ -194,7 +205,7 @@ class Level:
 class NZCycle:
     def __init__(self, A, m, k=2, omega=2 / 3, zmode="LS", tauA=1e-3, markov=False, nnz0=None, offset=1, max_levels=99,
                  omega_rule="fixed", z_levels=99, pattern="interp", gamma=1, theta=1.0,
-                 thetas=(0.0, 0.25, 0.5, 0.75, 1.0)):
+                 thetas=(0.0, 0.25, 0.5, 0.75, 1.0), kk_iter=150):
         self.levels = []
         self.k, self.omega, self.zmode, self.markov = k, omega, zmode, markov
         self.gamma = gamma            # recursive cycles per coarse solve (1: V, 2: W)
@@ -227,11 +238,30 @@ class NZCycle:
             H = (Tfc + Tff @ W - W @ Tcc - W @ (Tcf @ W)).tocsr()   # Q0sh T P, P = [I; W]
             if pattern == "interp":
                 patt = mask_pattern(W)
-            else:                                        # coarse points within distance 3 in A
+            elif pattern.startswith("geo"):
+                d = int(pattern[3:])
+                cidx = list(range(offset, m, 2))
+                pos = {c: t for t, c in enumerate(cidx)}
+                rows_, cols_ = [], []
+                for jf, p in enumerate(F):
+                    i, j = divmod(int(p), m)
+                    for a in cidx:
+                        if abs(a - i) > d:
+                            continue
+                        for bb in cidx:
+                            if abs(a - i) + abs(bb - j) <= d:
+                                rows_.append(pos[a] * mc + pos[bb])
+                                cols_.append(jf)
+                patt = sp.csr_matrix((np.ones(len(rows_)), (rows_, cols_)), shape=(len(C), len(F)))
+            else:                                        # coarse points within graph distance d in A
+                d = int(pattern[4:])
                 G = abs(A).tocsr()
                 G.data[:] = 1.0
-                G3 = (G @ G @ G).tocsr()
-                patt = sp.csr_matrix(G3[F][:, C].T)
+                Gd = G.copy()
+                for _ in range(d - 1):
+                    Gd = (Gd @ G).tocsr()
+                    Gd.data[:] = 1.0
+                patt = sp.csr_matrix(Gd[F][:, C].T)
                 patt.data[:] = 1.0
             if callable(zmode) and not markov and len(self.levels) <= z_levels:
                 Z = zmode(dict(K=K, H=H, patt=patt, W=W, A=A, C=C, F=F, omega=om, k=k,
@@ -243,7 +273,7 @@ class NZCycle:
             elif zmode == "ALS":
                 Z = z_als(K, H, patt, k)
             elif zmode == "Kk":
-                Z = z_kk(K, H, patt, k, z_ls(K, H, patt))
+                Z = z_kk(K, H, patt, k, z_ls(K, H, patt), maxiter=kk_iter)
             elif zmode == "LSk":
                 Z = z_lsk(K, H, patt, k)
             L.theta, L.cr = 1.0, None
