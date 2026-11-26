@@ -86,37 +86,47 @@ class Level:
 
 class Alg73Z:
     def __init__(self, A, k=4, delta=1.5, q=4, zmode="Kk", tauA=1e-3, markov=False,
-                 kk_iter=100, max_levels=99, capP=None, capA=None):
+                 kk_iter=100, max_levels=99, capP=None, capA=None,
+                 delta_coarse=None, z_levels=99, k_coarse=None, coarse="recursive", coarse_cycles=2):
         self.k, self.markov = k, markov
         self.nnz0 = A.nnz
         self.levels = []
         A = sp.csr_matrix(A)
         t = time.time()
+        self.coarse, self.coarse_cycles = coarse, coarse_cycles
         while True:
             L = Level()
             L.A = A
             self.levels.append(L)
             n = A.shape[0]
+            lev = len(self.levels) - 1
+            L.k = k if (lev == 0 or k_coarse is None) else k_coarse
             if n < COARSEST or len(self.levels) >= max_levels:
                 L.lu = sla.splu(sp.csc_matrix(A))
                 break
-            isF = mc.greedy_f_points(A, delta)
+            if lev == 1 and coarse == "air":                # O(N) coarse solver: PyAMG AIR on A_sigma
+                import pyamg
+                L.amg = pyamg.air_solver(A, max_coarse=150)
+                break
+            dl = delta if (lev == 0 or delta_coarse is None) else delta_coarse
+            isF = mc.greedy_f_points(A, dl)
             C, F = np.nonzero(~isF)[0], np.nonzero(isF)[0]
             Acc, Acf = A[C][:, C].tocsr(), A[C][:, F].tocsr()
             Afc, Aff = A[F][:, C].tocsr(), A[F][:, F].tocsr()
             Dfi = sp.diags(1 / Aff.diagonal())
             K = (sp.eye(len(F)) - Dfi @ Aff).tocsr()
             H = (-Dfi @ Afc).tocsr()
-            if zmode == "Q0" or markov:
+            kl = L.k
+            if zmode == "Q0" or markov or lev >= z_levels:
                 Z = sp.csr_matrix((len(C), len(F)))
             else:
                 patt = bounded_pattern(A, C, F, K, H, q)
                 Z0 = mz.z_ls(K, H, patt)
-                Z = mz.z_kk(K, H, patt, k, Z0, maxiter=kk_iter) if zmode == "Kk" else Z0
+                Z = mz.z_kk(K, H, patt, kl, Z0, maxiter=kk_iter) if zmode == "Kk" else Z0
                 Z.eliminate_zeros()
             KZ = (K + H @ Z).tocsr()
             S, V = H.copy(), H.copy()
-            for _ in range(k - 1):
+            for _ in range(kl - 1):
                 V = (KZ @ V).tocsr()
                 S = (S + V).tocsr()
             if capP:
@@ -150,7 +160,12 @@ class Alg73Z:
         L = self.levels[lev]
         if hasattr(L, "lu"):
             return L.lu.solve(b)
-        A, k, nz, C, F = L.A, self.k, self.nnz0, L.C, L.F
+        if hasattr(L, "amg"):
+            res = []
+            x = L.amg.solve(b, x0=np.zeros_like(b), maxiter=self.coarse_cycles, tol=1e-30, residuals=res)
+            work[0] += self.coarse_cycles * L.amg.cycle_complexity() * L.A.nnz / self.nnz0
+            return x
+        A, k, nz, C, F = L.A, L.k, self.nnz0, L.C, L.F
         xs = [x0]
         for _ in range(k):
             xs.append(xs[-1] + (b - A @ xs[-1]) / L.D)

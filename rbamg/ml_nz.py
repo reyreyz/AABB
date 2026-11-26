@@ -115,6 +115,21 @@ def z_als(K, H, patt, k, sweeps=4, Z0=None):
     return Z
 
 
+def gather(X, r, c, shape):
+    """values of sparse X at positions (r, c) (zeros where X has no entry), O(nnz)."""
+    Xc = sp.coo_matrix(X)
+    kx = Xc.row.astype(np.int64) * shape[1] + Xc.col
+    o = np.argsort(kx)
+    kx, vx = kx[o], Xc.data[o]
+    kq = r.astype(np.int64) * shape[1] + c
+    pos = np.searchsorted(kx, kq)
+    pos = np.minimum(pos, max(len(kx) - 1, 0))
+    hit = (len(kx) > 0) & (kx[pos] == kq) if len(kx) else np.zeros(len(kq), bool)
+    out = np.zeros(len(kq))
+    out[hit] = vx[pos[hit]]
+    return out
+
+
 def z_kk(K, H, patt, k, Z0, maxiter=100):
     """min ||(K + H Z)^k||_F^2 over Z on the pattern (sparse gradient)."""
     pc = sp.coo_matrix(patt)
@@ -134,9 +149,9 @@ def z_kk(K, H, patt, k, Z0, maxiter=100):
         for i in range(k):            # d/dKZ ||KZ^k||^2 = 2 sum_i (KZ^T)^i KZ^k (KZ^T)^{k-1-i}
             G = G + pw[i].T @ Kk @ pw[k - 1 - i].T
         GZ = (2 * H.T @ G).tocsr()
-        g = np.asarray(GZ[r_, c_]).ravel()
+        g = gather(GZ, r_, c_, patt.shape)
         return f, g
-    z0 = np.asarray(sp.csr_matrix(Z0)[r_, c_]).ravel()
+    z0 = gather(Z0, r_, c_, patt.shape)
     res = minimize(fg, z0, jac=True, method="L-BFGS-B", options=dict(maxiter=maxiter))
     return build(res.x)
 
