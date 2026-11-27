@@ -89,7 +89,8 @@ class Alg73Z:
                  kk_iter=100, max_levels=99, capP=None, capA=None,
                  delta_coarse=None, z_levels=99, k_coarse=None, coarse="recursive", coarse_cycles=2,
                  theta=1.0, thetas=(0.0, 0.25, 0.5, 0.75, 1.0), pc_mask=None,
-                 zpattern="dist2", z_from=0, refine_levels=-1):
+                 zpattern="dist2", z_from=0, refine_levels=-1,
+                 tau_deep=None, deep_from=8):
         self.k, self.markov = k, markov
         self.nnz0 = A.nnz
         self.levels = []
@@ -180,7 +181,8 @@ class Alg73Z:
             Asig = (Acc @ PpC + Acf @ PpF).tocsr()           # (A P')_C, exact
             L.C, L.F, L.Z, L.KZ, L.H, L.PpC, L.PpF = C, F, Z, KZ, H, PpC, PpF
             L.Acc, L.Acf, L.Asig, L.D = Acc, Acf, Asig, A.diagonal()
-            A = mc.filter_rowmax(Asig, tauA)
+            tau_l = tau_deep if (tau_deep is not None and lev + 1 >= deep_from) else tauA
+            A = mc.filter_rowmax(Asig, tau_l)                # Alg. 7.3: 1e-3 above level 8, 3e-5 below
             if capA:
                 A = cap_rows(A, capA, lump=True)            # bounded coarse stencils
             A.eliminate_zeros()
