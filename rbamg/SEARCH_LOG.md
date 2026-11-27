@@ -53,11 +53,14 @@ Problems:
 - [ ] 14. STRONG target: also beat every damped Markovian cycle on the same hierarchy (MJ over w_F, w_C, k <= 32 and the
           damped twin) by a clear margin in WU. Needs cell Pe where damped Jacobi is useless (Pe >= 10-12), with N still
           converging under a crude S~.
-- [ ] 15. At Pe >= 8: S~ with 2 entries per row exact on constants only (tv = empty), or lumping at tau 0.5, so the twin
+- [x] 15. At Pe >= 8: S~ with 2 entries per row exact on constants only (tv = empty), or lumping at tau 0.5, so the twin
           stays crude while N gets 2 entries.
 - [ ] 16. Red-black at Pe 6 with k = 3-4 and small w_C: N cheaper per digit? Compare against the MJ k=16 competitor.
 - [ ] 17. Other problem classes where damping cannot help: indefinite (Helmholtz-like) plus convection, or reaction
           with negative sign, combined with the red-black mechanism.
+
+- [ ] 18. Blended S~ = (1-theta) S~_1 + theta S~_2 (both exact on constants) at Pe 16-20, k 8-16, small w_C: widen the
+          margin over damped Markov-Jacobi.
 
 ## Results of the autonomous search
 (append: date/iteration, idea, setup, numbers, verdict)
@@ -114,3 +117,15 @@ Problems:
   wC 0.16, k=16) converges at 0.19-0.20 for about 500 WU, cheaper than N. The **strong** target is not met.
 - **Higher Pe with red-black** (`rbpe.py`, m=63): at Pe 8-16 only 2 entries per row give N < 0.8, and then the twin
   converges (0.57-0.94).
+
+### Iteration 4
+- **Idea 15, 2 entries per row exact on constants only** (`rbpe2.py`): at Pe 8-12 the twin always converges
+  (0.50-0.73). Not crude enough.
+- **Blended S~_θ = (1-θ)S~_1 + θS~_2** (`blend.py`, `blend2.py`): θ tunes how crude S~ is. At m=63, Pe 12,
+  red-black, k=8, wC=0.05: θ=0.5: N 0.359, twin 2.18, MJ 1.43. θ=0.6: 0.371 / 1.67 / 1.26. θ=0.7: 0.393 / 1.22 / 1.14.
+  At Pe 10, MJ on the same T often converges.
+- **Mesh check** (`blendmesh.py`; θ=0.5, N / twin / MJ): 0.359 / 2.24 / 1.65 at m=127 and 0.357 / 2.24 / 1.71 at
+  m=255. Two-level N is mesh-independent.
+- **Strong test, m=127** (`strong_test.py`, multilevel, cheap coarse levels): N 0.397, 20 cycles, **1159 WU**. Best
+  damped Markovian over (wF, wC, k ≤ 32): MJ wF 0.15, wC 0.03, k=32, 0.545, **1496 WU**. Only 1.3× more work; the
+  margin needs to be larger.

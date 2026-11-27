@@ -1,0 +1,12 @@
+| const | 6 | 63 | 0.0 | twin 1.25 | best N 0.363 (k=4, wC=0.1) |
+| const | 6 | 63 | 0.2 | twin 1.05 | best N 0.291 (k=4, wC=0.1) |
+| const | 6 | 63 | 0.4 | twin 0.82 | best N 0.25 (k=1, wC=0.7) |
+| const | 6 | 63 | 0.6 | twin 0.858 | best N 0.238 (k=1, wC=0.7) |
+| const | 8 | 63 | 0.0 | twin 2.55 | best N 0.896 (k=4, wC=0.05) |
+| const | 8 | 63 | 0.2 | twin 2.02 | best N 0.691 (k=4, wC=0.05) |
+| const | 8 | 63 | 0.4 | twin 1.36 | best N 0.475 (k=4, wC=0.05) |
+| const | 8 | 63 | 0.6 | twin 0.854 | best N 0.278 (k=1, wC=0.4) |
+| const | 10 | 63 | 0.0 | twin 4.38 | best N 1.03 (k=4, wC=0.05) |
+| const | 10 | 63 | 0.2 | twin 3.29 | best N 0.85 (k=4, wC=0.05) |
+| const | 10 | 63 | 0.4 | twin 2.08 | best N 0.635 (k=4, wC=0.05) |
+| const | 10 | 63 | 0.6 | twin 1.27 | best N 0.423 (k=4, wC=0.05) |

@@ -53,7 +53,7 @@ def truncate(S, tau, mode):
 
 class ML:
     def __init__(self, A, omega=1.0, k0=4, k1=4, delta=0.3, tauP=0.0, mode="drop", trunc_from=0,
-                 tau_filter=1e-3, tau_deep=None, shift=0.0, restrict="ppt", omega_c=None, xy=None, nkeep=3, lin_levels=99, tauP_deep=None, wc_levels=99, tv=None, split0=None, deep_from=8, refine=1, coarsest=None, max_levels=30):
+                 tau_filter=1e-3, tau_deep=None, shift=0.0, restrict="ppt", omega_c=None, xy=None, nkeep=3, lin_levels=99, tauP_deep=None, wc_levels=99, tv=None, split0=None, theta=None, deep_from=8, refine=1, coarsest=None, max_levels=30):
         self.nnz0, self.refine, self.omega, self.shift, self.work = A.nnz, refine, omega, shift, 0.0
         self.restrict, self.omega_c = restrict, omega_c
         nco = coarsest if coarsest else 16 * np.sqrt(A.shape[0])
@@ -81,7 +81,11 @@ class ML:
                 if tauP_deep: S = drop_rel(S, tauP_deep)
             elif mode == "lin" and lev >= trunc_from:
                 Bc = np.column_stack([np.ones(len(C)), xy[C]]) if tv is None else np.column_stack([np.ones(len(C)), tv[C]])
-                S = truncate_lin(S, Bc, nkeep)
+                if theta is None:
+                    S = truncate_lin(S, Bc, nkeep)
+                else:                                                # blend of 1-entry and 2-entry row-sum-exact S~
+                    B1 = np.ones((len(C), 1))
+                    S = ((1 - theta) * truncate_lin(S, B1, 1) + theta * truncate_lin(S, B1, 2)).tocsr()
             elif tauP > 0 and lev >= trunc_from:
                 S = truncate(S, tauP, mode)
             if xy is not None: xy = xy[C]
