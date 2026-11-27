@@ -19,6 +19,9 @@ for wf, r, kk in itertools.product((0.03, 0.06, 0.1, 0.15, 0.25, 0.4, 0.7, 1.0),
     f = solve(mm, "markovJ", 80); res.append((f[3], f[0], "MJ", wf, r * wf, kk))
     if r == 0.0:
         f = solve(mm, "twin", 80); res.append((f[3], f[0], "twin", wf, "-", kk))
+for wcc, kk in itertools.product((0.01, 0.02, 0.03, 0.05, 0.1), (8, 16, 32)):
+    mm = ML(A, omega=1.0, omega_c=wcc, wc_levels=1, k0=kk, split0=rb, mode="lin", xy=xy, theta=th, lin_levels=1, **coarse)
+    f = solve(mm, "markovJ", 80); res.append((f[3], f[0], "MJ", 1.0, wcc, kk))
 res.sort(key=lambda x: (x[0], x[1]))
 print(f"best Markovian cycles on the same hierarchy (WU total, factor, method, w_F, w_C, k), of {len(res)}:")
 for x in res[:6]: print("  ", (round(x[0]) if np.isfinite(x[0]) else "inf", round(float(x[1]), 3)) + x[2:])

@@ -6,3 +6,11 @@ best Markovian cycles on the same hierarchy (WU total, factor, method, w_F, w_C,
    ('inf', 0.851, 'MJ', 0.06, 0.06, 32)
    ('inf', 0.897, 'MJ', 0.15, 0.03, 16)
    ('inf', 0.908, 'MJ', 0.06, 0.03, 32)
+m=127 Pe=16.0 theta=0.6: N (k=8, wC=0.03): factor 0.536, cycles 30, WU 1673 (56/cycle), op.cx 4.21
+best Markovian cycles on the same hierarchy (WU total, factor, method, w_F, w_C, k), of 175:
+   (1087, 0.466, 'MJ', 1.0, 0.03, 16)
+   (1130, 0.364, 'MJ', 1.0, 0.03, 32)
+   (1217, 0.511, 'MJ', 1.0, 0.02, 16)
+   (1308, 0.433, 'MJ', 1.0, 0.02, 32)
+   (1665, 0.512, 'MJ', 1.0, 0.01, 32)
+   (2483, 0.763, 'MJ', 1.0, 0.02, 8)

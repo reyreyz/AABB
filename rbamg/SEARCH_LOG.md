@@ -56,7 +56,7 @@ Problems:
 - [x] 15. At Pe >= 8: S~ with 2 entries per row exact on constants only (tv = empty), or lumping at tau 0.5, so the twin
           stays crude while N gets 2 entries.
 - [ ] 16. Red-black at Pe 6 with k = 3-4 and small w_C: N cheaper per digit? Compare against the MJ k=16 competitor.
-- [ ] 17. Other problem classes where damping cannot help: indefinite (Helmholtz-like) plus convection, or reaction
+- [x] 17. Other problem classes where damping cannot help: indefinite (Helmholtz-like) plus convection, or reaction
           with negative sign, combined with the red-black mechanism.
 
 - [ ] 18. Blended S~ = (1-theta) S~_1 + theta S~_2 (both exact on constants) at Pe 16-20, k 8-16, small w_C: widen the
@@ -129,3 +129,15 @@ Problems:
 - **Strong test, m=127** (`strong_test.py`, multilevel, cheap coarse levels): N 0.397, 20 cycles, **1159 WU**. Best
   damped Markovian over (wF, wC, k ≤ 32): MJ wF 0.15, wC 0.03, k=32, 0.545, **1496 WU**. Only 1.3× more work; the
   margin needs to be larger.
+
+### Iteration 5
+- **Pe 16-20, blended S~** (`blend3.py`): for k ≥ 12, MJ on the same T converges about as well as N.
+  **Strong test at Pe 16** (θ 0.6, k 8, wC 0.03; m=127): N 0.536, 30 cycles, 1673 WU. MJ with wF=1, wC=0.03, k=16:
+  **1087 WU**, so the Markovian cycle wins.
+  Reason: with red-black and ω_F=1, every sweep solves the F-points exactly (K=0). MJ with small ω_C is then damped
+  Richardson on the red-black Schur complement, which is well-behaved for centered CD. In this family, a small ω_C
+  helps N and that Markovian cycle equally.
+- **Idea 17, indefinite A = L - sI (+ small convection)** with S~ fitted to the C-parts of the amplified modes
+  (`indef_search.py`, dense, m=15): whenever the twin diverges, N diverges too (1.3-1.8). The Galerkin coarse
+  correction of strongly indefinite A breaks down. Dropped.
+- Running: strong test at Pe 14 (θ 0.5, k 8, wC 0.05).
