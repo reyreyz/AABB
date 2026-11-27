@@ -239,3 +239,8 @@ Problems:
   persistent**.
 - Replaced seed 22 by a **focused** process (seed 31, `falsify2.py 31 <log> focus`): the region of the v1 hits
   (k 1-2, wF 0.5-0.9, Pe 8-25, greedy/red-black) on larger base grids m = 15-21 (persistence checked at 2m+1 = 31-43).
+
+### Iteration 13
+- falsify2 seed 21 (broad): over 7000 samples, **no hits** (transient or persistent).
+- falsify2 seed 31 (focused, m 15-21): slow (dense eigs at n ≤ 441, plus persistence checks at n ≤ 1849); no output
+  yet beyond the start.
