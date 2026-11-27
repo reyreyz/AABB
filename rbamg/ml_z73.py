@@ -97,7 +97,8 @@ class Alg73Z:
                  delta_coarse=None, z_levels=99, k_coarse=None, coarse="recursive", coarse_cycles=2,
                  theta=1.0, thetas=(0.0, 0.25, 0.5, 0.75, 1.0), pc_mask=None,
                  zpattern="dist2", z_from=0, refine_levels=-1,
-                 tau_deep=None, deep_from=8, cap_from=1, tauP=0.0, tauP_from=1, cap_lump=True, n_refine=1):
+                 tau_deep=None, deep_from=8, cap_from=1, tauP=0.0, tauP_from=1, cap_lump=True, n_refine=1,
+                 coarsest=None):
         self.k, self.markov = k, markov
         self.nnz0 = A.nnz
         self.levels = []
@@ -113,8 +114,9 @@ class Alg73Z:
             n = A.shape[0]
             lev = len(self.levels) - 1
             L.k = k if (lev == 0 or k_coarse is None) else k_coarse
-            if n < COARSEST or len(self.levels) >= max_levels:
+            if n < (coarsest or COARSEST) or len(self.levels) >= max_levels:
                 L.lu = sla.splu(sp.csc_matrix(A))
+                L.lu_nnz = L.lu.L.nnz + L.lu.U.nnz          # work of one triangular solve pair
                 break
             if lev == 1 and coarse == "air":                # O(N) coarse solver: PyAMG AIR on A_sigma
                 import pyamg
@@ -202,8 +204,8 @@ class Alg73Z:
         return sum(L.A.nnz for L in self.levels) / self.nnz0
 
     def stored_complexity(self):
-        """all stored sparse objects relative to nnz(A0): A, Z, K_Z, H, P'"""
-        tot = 0
+        """all stored sparse objects relative to nnz(A0): A, Z, K_Z, H, P', LU factors"""
+        tot = sum(getattr(L, "lu_nnz", 0) for L in self.levels)
         for L in self.levels:
             tot += L.A.nnz
             if hasattr(L, "Z"):
@@ -213,6 +215,7 @@ class Alg73Z:
     def cycle(self, lev, b, x0, work):
         L = self.levels[lev]
         if hasattr(L, "lu"):
+            work[0] += getattr(L, "lu_nnz", 0) / self.nnz0
             return L.lu.solve(b)
         if hasattr(L, "amg"):
             res = []
