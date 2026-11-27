@@ -87,7 +87,8 @@ class Level:
 class Alg73Z:
     def __init__(self, A, k=4, delta=1.5, q=4, zmode="Kk", tauA=1e-3, markov=False,
                  kk_iter=100, max_levels=99, capP=None, capA=None,
-                 delta_coarse=None, z_levels=99, k_coarse=None, coarse="recursive", coarse_cycles=2):
+                 delta_coarse=None, z_levels=99, k_coarse=None, coarse="recursive", coarse_cycles=2,
+                 theta=1.0, thetas=(0.0, 0.25, 0.5, 0.75, 1.0)):
         self.k, self.markov = k, markov
         self.nnz0 = A.nnz
         self.levels = []
@@ -124,6 +125,32 @@ class Alg73Z:
                 Z0 = mz.z_ls(K, H, patt)
                 Z = mz.z_kk(K, H, patt, kl, Z0, maxiter=kk_iter) if zmode == "Kk" else Z0
                 Z.eliminate_zeros()
+                if theta == "auto":
+                    # safeguard: theta minimizing the CR rate of the level pair
+                    # max(rho(K_{theta Z}), rho(K_c)), K_c = I - D_ff^{-1} A_ff of the
+                    # next level after its own greedy split; theta = 0 is plain N
+                    best = None
+                    for th in thetas:
+                        Zt = (th * Z).tocsr()
+                        KZt = (K + H @ Zt).tocsr()
+                        St, Vt = H.copy(), H.copy()
+                        for _ in range(kl - 1):
+                            Vt = (KZt @ Vt).tocsr()
+                            St = (St + Vt).tocsr()
+                        Ac = mc.filter_rowmax((Acc @ (sp.eye(len(C)) + Zt @ St) + Acf @ St).tocsr(), tauA)
+                        r_f = mz.cr_rate(KZt)
+                        if Ac.shape[0] >= COARSEST:
+                            isFc = mc.greedy_f_points(Ac, delta_coarse or delta)
+                            Fc = np.nonzero(isFc)[0]
+                            Affc = Ac[Fc][:, Fc]
+                            Kc = (sp.eye(len(Fc)) - sp.diags(1 / Affc.diagonal()) @ Affc).tocsr()
+                            r_c = mz.cr_rate(Kc)
+                        else:
+                            r_c = 0.0
+                        if best is None or max(r_f, r_c) < best[0] - 1e-12:
+                            best = (max(r_f, r_c), th)
+                    L.theta = best[1]
+                    Z = (best[1] * Z).tocsr()
             KZ = (K + H @ Z).tocsr()
             S, V = H.copy(), H.copy()
             for _ in range(kl - 1):
