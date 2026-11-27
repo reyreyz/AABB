@@ -312,3 +312,40 @@ cycle counts grow (31 → 50). Total work is therefore not yet mesh-independent.
 - The coarse levels need the robust settings. Cheap coarse cycles ($k=2$, truncation 1e-2) stall at m ≥ 255, because
   N's error contains the coarse-cycle defect acting on $c_0$.
 - The family has fixed cell Pe (10), as in §7.3, so the physical Pe grows with $m$.
+
+### Claim 11b. Levers against the factor creep (`tv_test.py`, `wscan.py`, `wc_mesh.py`)
+
+- **Test vectors for $\tilde S$** (adding $\psi$, quadratics, or N's slowest mode): no gain. With 2 entries per row N
+  stays at 0.55–0.61 at m=127/255. With 3 entries N gains less than 0.03 and the twin starts to converge.
+- **Split threshold δ:** no gain. **$\omega_F$:** must be exactly 1 (0.9 gives $\rho(K)>0$ and N stalls at 0.99).
+- **C-weight $\omega_C$:** helps. Two-level $\rho(E_N)$ with $\omega_C=0.5$/0.6: 0.29/0.29 (m=63), 0.31/0.34 (127),
+  0.33/0.38 (255), 0.49/0.48 (511). Twin 0.82–1.22, Markov-Jacobi 2.7–4.7.
+- **Multilevel with $\omega_C=0.6$:**
+
+| m | N: factor / cycles | WU total | twin |
+|---|---|---|---|
+| 127 | 0.301 / 16 | 1,872 | diverges |
+| 255 | 0.343 / 18 | 3,012 | diverges |
+| 511 | 0.435 / 22 | 4,375 | diverges |
+| 1023 | 0.703 / 51 | 12,175 | diverges |
+
+  Total work is halved up to m=511. At m=1023 the factor returns to 0.70. An extra coarse cycle (refinement) does not
+  change it (0.703), so the limit is the finest level, not the coarse solve. The creep is reduced but not removed.
+
+## Claim 12. Truncated multilevel N is always a stationary Markovian cycle with a composite smoother (`check_hat.py`)
+
+N's update regroups as $\hat x=x^{(k)}+Qy-\tilde Pd^0$ followed by the standard correction, because
+$R\,r(x^{(k)}+h)+A_cd^0=R\,r(\hat x)$. Hence $E_N=(I-\tilde PB_cRA)(I-\hat MA)$ with
+$$\hat T=\tilde PP^\sharp+Q(S-\tilde S)P^\sharp T^k+QK^kQ^\sharp,\qquad
+\hat M=\sum_{j<k}T_Q^jQQ^\sharp M+Q(S-\tilde S)P^\sharp\sum_{j<k}T^jM .$$
+This holds recursively on every level, for any truncation, filtering and coarse cycle. $\hat M$ uses only the
+residual: $k$ F-sweeps, $k$ global sweeps, and $S$ applied matrix-free through $k$ products with $K$ and $H$.
+Check: the iterates of N and of the cycle with $\hat M$ agree to 4e-15 (Claim 11 hierarchy, m=63/127, converging) and
+3e-14 (lump 0.5, k=4, both diverging to 1e22).
+Consequences:
+- $\hat M$ is the twin's smoother plus a correction that uses the **untruncated** $S$. Truncation in N is truncation
+  of the coarse correction only; its effective smoother still applies the exact $S$ (through the history), which
+  moves the defect from $c_0$ to $c_k$.
+- $\hat T$ is not the $k$-th power of one sparse stationary step. It contains $k$ global sweeps and $k$ F-sweeps
+  combined through $Q(S-\tilde S)P^\sharp$, and costs as much as N, or slightly more because it recomputes the
+  sweeps from 0.

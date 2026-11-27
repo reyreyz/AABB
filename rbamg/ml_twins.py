@@ -53,7 +53,7 @@ def truncate(S, tau, mode):
 
 class ML:
     def __init__(self, A, omega=1.0, k0=4, k1=4, delta=0.3, tauP=0.0, mode="drop", trunc_from=0,
-                 tau_filter=1e-3, tau_deep=None, shift=0.0, restrict="ppt", omega_c=None, xy=None, nkeep=3, lin_levels=99, tauP_deep=None, wc_levels=99, deep_from=8, refine=1, coarsest=None, max_levels=30):
+                 tau_filter=1e-3, tau_deep=None, shift=0.0, restrict="ppt", omega_c=None, xy=None, nkeep=3, lin_levels=99, tauP_deep=None, wc_levels=99, tv=None, deep_from=8, refine=1, coarsest=None, max_levels=30):
         self.nnz0, self.refine, self.omega, self.shift, self.work = A.nnz, refine, omega, shift, 0.0
         self.restrict, self.omega_c = restrict, omega_c
         nco = coarsest if coarsest else 16 * np.sqrt(A.shape[0])
@@ -80,11 +80,12 @@ class ML:
             if mode == "lin" and lev >= lin_levels:
                 if tauP_deep: S = drop_rel(S, tauP_deep)
             elif mode == "lin" and lev >= trunc_from:
-                Bc = np.column_stack([np.ones(len(C)), xy[C]])
+                Bc = np.column_stack([np.ones(len(C)), xy[C]]) if tv is None else np.column_stack([np.ones(len(C)), tv[C]])
                 S = truncate_lin(S, Bc, nkeep)
             elif tauP > 0 and lev >= trunc_from:
                 S = truncate(S, tauP, mode)
             if xy is not None: xy = xy[C]
+            tv = None
             L.C, L.F, L.K, L.H, L.S, L.ST = C, F, K, H, S, S.T.tocsr()
             L.w = np.full(A.shape[0], omega); L.w[C] = omega if (omega_c is None or lev >= wc_levels) else omega_c
             L.AFC, L.AFF = Afc.tocsr(), Aff.tocsr()
@@ -114,6 +115,7 @@ class ML:
         ap = L.APc.nnz + L.APf.nnz
         self.work += {"twin": L.AFC.nnz + L.k * L.AFF.nnz + A.nnz + 2 * L.S.nnz,
                       "markovJ": (L.k + 1) * A.nnz + 2 * L.S.nnz,
+                      "hat": (2 * L.k + 2) * A.nnz + L.k * (L.K.nnz + L.H.nnz) + 3 * L.S.nnz,
                       "N": (L.k + 1) * A.nnz + L.k * (L.K.nnz + L.H.nnz) + 3 * L.S.nnz + ap}[which] / self.nnz0
         if lev <= self.refine and lev + 1 < len(self.levels) and not hasattr(self.levels[lev + 1], "lu"):
             self.work += ap / self.nnz0
@@ -124,6 +126,23 @@ class ML:
                 x[F] += w * (g - L.AFF @ x[F]) / L.D[F]
             r = b - A @ x
             e = self.coarse(lev, self.Rr(L, r), which)
+            x[C] += e; x[F] += L.S @ e
+            return x
+        if which == "hat":                                           # effective Markovian: x += M^ r, then P~ correction
+            r = b - A @ x0
+            uT = np.zeros(len(x0))                                   # sum_j T_Q^j Q Q^# M r  (k F-sweeps from 0)
+            for _ in range(L.k):
+                uT[F] += w * (r[F] - L.AFF @ uT[F]) / L.D[F]
+            u = np.zeros(len(x0))                                    # sum_j T^j M r          (k global sweeps from 0)
+            for _ in range(L.k):
+                u = u + L.w * (r - A @ u) / L.D
+            c = u[C]; s_ = np.zeros(len(F))
+            for _ in range(L.k):                                     # S c = sum_{l<k} K^l H c
+                s_ = L.K @ s_ + L.H @ c
+            x = x0 + uT
+            x[F] += s_ - L.S @ c                                     # + Q (S - S~) P^# sum_j T^j M r
+            r2 = b - A @ x
+            e = self.coarse(lev, self.Rr(L, r2), which)
             x[C] += e; x[F] += L.S @ e
             return x
         if which == "markovJ":                                       # k global Jacobi, then P~ correction
