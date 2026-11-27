@@ -114,7 +114,8 @@ class ML:
         y = np.zeros(len(F))
         for l in range(L.k):
             y = L.K @ y + L.H @ (xk[C] - xs[l][C])
-        j = int(round(self.shift * L.k))                             # coarse unknown = step-j error
+        sh = self.shift[lev] if isinstance(self.shift, (list, tuple)) else self.shift
+        j = int(round(sh * L.k))                             # coarse unknown = step-j error
         d0 = xk[C] - xs[j][C]                                        # d^j = c_j - c_k
         xh = xk.copy(); xh[F] += y
         r = b - A @ xh

@@ -168,3 +168,35 @@ Results (factor / cycles / WU, `results_shift.md`):
 - Recirc Pe 2 and 5 ($T$ smooths): $j=0$, $k/2$ and $k$ agree to 3 digits in every row (m up to 511). The coarse
   cycle is accurate enough that its defect is negligible; the gap to the twin comes entirely from the truncation term.
 - So $j=0$ (Alg 7.3) is the right choice: never worse, and much better when $T$ amplifies.
+
+### Claim 7c. Diverging smoother: putting the coarse solve on the step-0 error is what makes N converge (`diverge_levels.py`)
+
+With no truncation, $E_je_0=\tilde P(I-B_cA_c)\,c_j+(I-\tilde PB_cRA)QK^kq_0$, and $\|c_k\|\approx g\,\|c_0\|$, where $g$
+is the growth of the C-error over $k$ sweeps. A coarse solve on the step-$k$ error multiplies the coarse defect by
+$g$; a coarse solve on the step-0 error ($j=0$, Alg 7.3) never sees the divergence.
+Recirc Pe 20, Jacobi $\omega=1$, m=255:
+
+| level | k | $\rho(T_\ell)$ | growth $g_\ell$ of the C-error |
+|---|---|---|---|
+| 0 | 4 | 4.86 | 353 |
+| 1 | 8 | 2.29 | 723 |
+| 2 | 8 | 1.49 | 23.6 |
+| 3 | 8 | 1.33 | 15.1 |
+| 4–6 | 8 | ≈1.0–1.1 | 0.7–1.3 |
+
+| coarse unknown = step-$k$ error on | factor | cycles |
+|---|---|---|
+| no level (Alg 7.3) | 0.00317 | 3 |
+| level 0 only | 0.00314 | 3 |
+| levels ≥ 1 only | 0.22 | 12 |
+| all levels | diverges | – |
+
+Level 0 tolerates $g=353$ because its coarse defect is about 5e-6 (refinement plus accurate nested cycles). On the
+deeper levels the nested cycle is less accurate, so $g\times$defect > 1 there and the error compounds.
+How the three methods treat the divergence:
+- Markov-Jacobi has no history and no shift, so both the F- and C-divergence stay in the error (one cycle multiplies
+  it by 5e7).
+- N with $j=k$ removes the F-divergence through the history ($QK^kq_0$) but passes the C-divergence to the inexact
+  coarse solve.
+- N with $j=0$, like the twin, removes both.
+The truncation defect of Claim 7 also acts on the amplified $c_k$, which is why N fails under truncation at Pe 20.
