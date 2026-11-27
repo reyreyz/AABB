@@ -244,3 +244,7 @@ Problems:
 - falsify2 seed 21 (broad): over 7000 samples, **no hits** (transient or persistent).
 - falsify2 seed 31 (focused, m 15-21): slow (dense eigs at n ≤ 441, plus persistence checks at n ≤ 1849); no output
   yet beyond the start.
+
+### Stopped by the user
+Random falsification searches stopped on request (final: seed 21 broad, about 12000 samples; seed 31 focused, 500+
+samples; **no persistent or transient hits**). Focus moved to natural examples (Claim 15).

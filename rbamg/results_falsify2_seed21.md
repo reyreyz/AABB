@@ -21,3 +21,7 @@ progress: 10000 samples, 9183s
 progress: 10500 samples, 9427s
 progress: 11000 samples, 10019s
 progress: 11500 samples, 10461s
+progress: 12000 samples, 11891s
+progress: 12500 samples, 12202s
+progress: 13000 samples, 12743s
+progress: 13500 samples, 13011s
