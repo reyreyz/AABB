@@ -77,8 +77,39 @@ Under the black-box constraint N is the only one of these methods that converges
 mesh-independent factor and cost per cycle close to O(n). If restarts are allowed, the twin does
 the same work about 6× more cheaply.
 
-## Not demonstrated
+## Claim 5. A dense $Q^\sharp$ cannot make N cheaper than its twin (`claims.py E`)
 
-- **A dense $Q^\sharp$ with sparse $K$, $H$**, the only flop-count case where N could be cheaper than
-  its twin: no natural example is known.
-- **Parallel or latency effects:** not measured.
+The twin uses $Q^\sharp$ only through the product $QQ^\sharp = I - PP^\sharp$. This is the oblique projector
+onto $\mathrm{col}(Q)$ along $\mathrm{col}(P)$, and it doesn't depend on the basis chosen for $\mathrm{col}(Q)$.
+N needs $P^\sharp$ anyway, to form the history. A basis change $Q\to QS$ (Prop. 3.6: $Q^\sharp\to S^{-1}Q^\sharp$,
+$P^\sharp$ unchanged) can make $Q^\sharp$ dense, but N then works with $K_S=S^{-1}KS$ and $H_S=S^{-1}H$, which are
+dense too. Example: $S=I+0.9\,\mathrm{subdiag}$, which is bidiagonal with a dense inverse.
+
+| problem | m | fill $Q^\sharp$: $Q_0$ / $Q_0S$ | fill $K$ | fill $H$ | $\|QQ^\sharp$ change$\|$ | N iterates change | twin iterates change |
+|---|---|---|---|---|---|---|---|
+| CD 1e-2 | 15 | 0.016 / 0.522 | 0.057 / 0.614 | 0.092 / 0.672 | 9.6e-16 | 2.5e-16 | 3.4e-16 |
+| CD 1e-2 | 31 | 0.004 / 0.304 | 0.014 / 0.375 | 0.025 / 0.393 | 1.9e-15 | 2.9e-16 | 3.7e-16 |
+| CD 1e-3 | 15 | 0.016 / 0.522 | 0.057 / 0.614 | 0.092 / 0.672 | 9.6e-16 | 2.6e-16 | 3.5e-16 |
+| CD 1e-3 | 31 | 0.004 / 0.304 | 0.014 / 0.374 | 0.025 / 0.392 | 1.9e-15 | 4.7e-16 | 5.4e-16 |
+
+So the "dense $Q^\sharp$, sparse $K,H$" case is empty. If $K$ and $H$ are sparse in some basis, the twin uses the
+same projector, and that projector does not depend on the basis.
+
+## Claim 6. Latency: N has fewer critical-path rounds for a non-injective $Q$ and $k\ge4$, at higher flop cost (`claims.py F`)
+
+The history can be pipelined: $y = P'_F\,P^\sharp x^{(k)} - u$, where $u\leftarrow Ku + HP^\sharp x^{(\ell)}$ is computed
+alongside the sweeps. That takes the history off the critical path. The twin's projected update has to finish before
+the next residual, so it stays on the critical path. The test problem is the recirculating flow at Pe 20 with $P_0$ and
+injection; rounds are sparse matvecs on the critical path, counting one halo exchange each, with the coarse solve excluded.
+
+| m | complement | k | pipelined N vs N | N rounds | twin rounds | N flops/nnz(A) | twin flops/nnz(A) |
+|---|---|---|---|---|---|---|---|
+| 127 | $Q_0$ | 4 | 2.6e-14 | 7 | 6 | 7.90 | 3.00 |
+| 127 | $Q_0$ | 8 | 7.8e-13 | 11 | 10 | 13.90 | 5.00 |
+| 127 | $Q_0+P_0Z$ | 2 | 2.3e-15 | 7 | 6 | 12.77 | 6.35 |
+| 127 | $Q_0+P_0Z$ | 4 | 1.8e-14 | **9** | 10 | 32.90 | 18.24 |
+| 127 | $Q_0+P_0Z$ | 8 | 9.3e-13 | **13** | 18 | 98.21 | 58.69 |
+| 255 | $Q_0+P_0Z$ | 8 | 1.5e-11 | **13** | 18 | 101.81 | 61.17 |
+
+The rounds are $k+5$ for N and $2k+2$ for the twin when $Q$ is non-injective, and $k+3$ against $k+2$ for $Q_0$. Full
+table: `results_claims_F.md`. **Caveat:** these are counts from a latency model, not timings of a parallel run.

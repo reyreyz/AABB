@@ -364,6 +364,98 @@ def section_D(ms=(127, 255, 511)):
         sys.stdout.flush()
 
 
+# =========================================================================== E
+def section_E():
+    """Basis change Q -> Q S (sparse S, dense S^{-1}): Q^sharp dense, but the twin uses only
+    Q Q^sharp = I - P P^sharp (basis independent); N's K_S = S^{-1} K S, H_S = S^{-1} H densify."""
+    from reproduce_sm1 import setup
+    print("\n## E. Dense Q^sharp from a basis change Q -> Q S: hurts N, not the twin\n")
+    print("| problem | m | fill Q^sharp: Q0 / Q0 S | fill K: Q0 / Q0 S | fill H: Q0 / Q0 S | ‖QQ^sharp(Q0 S) - QQ^sharp(Q0)‖ | iterates N(Q0 S) vs N(Q0) | twin(Q0 S) vs twin(Q0) |")
+    print("|---|---|---|---|---|---|---|---|")
+    rng = np.random.default_rng(2)
+    dens = lambda X: np.count_nonzero(np.abs(X) > 1e-12 * np.abs(X).max()) / X.size
+    for name in ("CD eps=1e-2", "CD eps=1e-3"):
+        for m in (15, 31):
+            k = 3
+            s = setup(name, m, k)
+            n, nc, nf = s.n, s.nc, s.nf
+            S = np.eye(nf) + 0.9 * np.eye(nf, k=-1)          # sparse bidiagonal, dense inverse
+            Sinv = np.linalg.inv(S)
+            Q0, Q0sh, P0sh = s.Q0, s.Q0sh, s.P0sh
+            Q1, Q1sh = Q0 @ S, Sinv @ Q0sh                   # Prop. 3.6: Qsh -> S^{-1} Qsh, Psh unchanged
+            T = np.eye(n) - s.M @ s.A
+            K0, H0 = Q0sh @ T @ Q0, Q0sh @ T @ s.P
+            K1, H1 = Q1sh @ T @ Q1, Q1sh @ T @ s.P
+            b, x0 = rng.standard_normal(n), rng.standard_normal(n)
+            R = s.P.T
+            xn0 = dense_alg42(s.A, s.M, s.P, Q0, P0sh, Q0sh, R, k, x0, b)
+            xn1 = dense_alg42(s.A, s.M, s.P, Q1, P0sh, Q1sh, R, k, x0, b)
+            xt0 = dense_twin(s.A, s.M, s.P, Q0, P0sh, Q0sh, R, k, x0, b)
+            xt1 = dense_twin(s.A, s.M, s.P, Q1, P0sh, Q1sh, R, k, x0, b)
+            print(f"| {name} | {m} | {dens(Q0sh):.3f} / {dens(Q1sh):.3f} | {dens(K0):.3f} / {dens(K1):.3f} | "
+                  f"{dens(H0):.3f} / {dens(H1):.3f} | {np.linalg.norm(Q1 @ Q1sh - Q0 @ Q0sh):.1e} | "
+                  f"{np.linalg.norm(xn1 - xn0)/np.linalg.norm(xn0):.1e} | {np.linalg.norm(xt1 - xt0)/np.linalg.norm(xt0):.1e} |")
+            sys.stdout.flush()
+
+
+# =========================================================================== F
+def section_F(ms=(127, 255)):
+    """Latency model: critical-path sparse-matvec rounds (one halo exchange each) vs flops.
+    N pipelined:  y = S Psh x^k - u,  u <- K u + H Psh x^l computed alongside the sweeps
+                  (off the critical path).  Twin: the projected update must finish before the
+                  next residual (on the critical path)."""
+    import ml_cycles as mc
+    import ml_nz as mz
+    import ml_z73 as mzz
+    import sparse_problems as spp
+    print("\n## F. Latency model: N (pipelined history) vs twin, recirculating flow Pe 20, P0, injection\n")
+    print("| m | complement | k | pipelined N = N (iterates) | N: rounds on critical path | twin: rounds | N: flops / nnz(A) | twin: flops / nnz(A) |")
+    print("|---|---|---|---|---|---|---|---|")
+    for m in ms:
+        A = spp.cd(m, spp.RECIRC, spp.eps_for_peclet(m, spp.RECIRC, 20, "2", False), "centered")
+        b = np.random.default_rng(0).standard_normal(A.shape[0])
+        for delta, qlab in ((0.3, "Q0"), (0.6, "Q0 + P0 Z")):
+            isF = mc.greedy_f_points(A, delta)
+            C, F = np.nonzero(~isF)[0], np.nonzero(isF)[0]
+            for k in (2, 4, 8):
+                if delta == 0.3:
+                    Z = sp.csr_matrix((len(C), len(F)))
+                else:
+                    Aff, Afc = A[F][:, F], A[F][:, C]
+                    Dfi = sp.diags(1 / Aff.diagonal())
+                    K0, H0 = (sp.eye(len(F)) - Dfi @ Aff).tocsr(), (-Dfi @ Afc).tocsr()
+                    patt = mzz.bounded_pattern(A, C, F, K0, H0, 4)
+                    Z = mz.z_kk(K0, H0, patt, k, mz.z_ls(K0, H0, patt), maxiter=60)
+                tl = TwoLevelP0(A, isF, Z, k)
+                # pipelined N on one cycle
+                x0 = np.zeros(A.shape[0])
+                xs = [x0]
+                u = np.zeros(len(F))
+                Psh = lambda v: v[C] - tl.Z @ v[F]
+                for l in range(k):
+                    u = tl.K @ u + tl.H @ Psh(xs[-1])        # off the critical path
+                    xs.append(xs[-1] + (b - A @ xs[-1]) / tl.D)
+                xk = xs[-1]
+                y = tl.PpF @ Psh(xk) - u                    # S = P'_F
+                h = np.zeros(A.shape[0])
+                h[F], h[C] = y, tl.Z @ y
+                r = b - A @ (xk + h)
+                xp = tl.prolong(xk + h, tl.coarse(r[C], [0.0]), [0.0])
+                xn = tl.cycle_N(x0, b, [0.0])
+                same = np.linalg.norm(xp - xn) / np.linalg.norm(xn)
+                zr = 1 if tl.Z.nnz else 0
+                # critical path (fine level, coarse solve excluded):
+                #  N:    k sweeps; then Psh x^k (zr), S (1), h_C = Z y (zr), residual (1), prolongation (1)
+                #  twin: per step residual F-rows (1) + Q g (zr); then residual C-rows (1), prolongation (1)
+                rN = k + zr + 1 + zr + 1 + 1
+                rT = k * (1 + zr) + 1 + 1
+                fN = (k * A.nnz + k * (tl.K.nnz + tl.H.nnz + tl.Z.nnz) + tl.PpF.nnz + 2 * tl.Z.nnz + A.nnz
+                      + tl.PpC.nnz + tl.PpF.nnz) / A.nnz
+                fT = (k * (tl.AF.nnz + tl.Z.nnz) + tl.AC.nnz + tl.PpC.nnz + tl.PpF.nnz) / A.nnz
+                print(f"| {m} | {qlab} | {k} | {same:.1e} | {rN} | {rT} | {fN:.2f} | {fT:.2f} |")
+                sys.stdout.flush()
+
+
 if __name__ == "__main__":
     which = sys.argv[1] if len(sys.argv) > 1 else "ABCD"
     print("# Claims: N and its Markovian twin\n")
@@ -375,3 +467,7 @@ if __name__ == "__main__":
         section_C()
     if "D" in which:
         section_D()
+    if "E" in which:
+        section_E()
+    if "F" in which:
+        section_F()
