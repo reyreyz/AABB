@@ -50,7 +50,7 @@ Problems:
 - [x] 12. Red-black split on level 0 (K = 0 and G = 0 exactly), single-entry lumped S~, k = 1-3, w_C scan.
 - [x] 13. Multilevel O(n) version of the red-black candidate, with robust coarse levels.
 
-- [ ] 14. STRONG target: also beat every damped Markovian cycle on the same hierarchy (MJ over w_F, w_C, k <= 32 and the
+- [x] 14. STRONG target: also beat every damped Markovian cycle on the same hierarchy (MJ over w_F, w_C, k <= 32 and the
           damped twin) by a clear margin in WU. Needs cell Pe where damped Jacobi is useless (Pe >= 10-12), with N still
           converging under a crude S~.
 - [x] 15. At Pe >= 8: S~ with 2 entries per row exact on constants only (tv = empty), or lumping at tau 0.5, so the twin
@@ -59,8 +59,14 @@ Problems:
 - [x] 17. Other problem classes where damping cannot help: indefinite (Helmholtz-like) plus convection, or reaction
           with negative sign, combined with the red-black mechanism.
 
-- [ ] 18. Blended S~ = (1-theta) S~_1 + theta S~_2 (both exact on constants) at Pe 16-20, k 8-16, small w_C: widen the
+- [x] 18. Blended S~ = (1-theta) S~_1 + theta S~_2 (both exact on constants) at Pe 16-20, k 8-16, small w_C: widen the
           margin over damped Markov-Jacobi.
+
+- [ ] 20. NON-INJECTIVE Q = Q0 + P0 Z on level 0 (the user's original spec): choose a split where pointwise
+          F-relaxation diverges (rho(K0) > 1, e.g. standard or full coarsening at high Pe) and Z such that
+          K_Z = K0 + H Z is stable. Then no pointwise F-solve exists for the "F-solve + Schur-Richardson" Markovian
+          competitor; the twin (projected relaxation x += Q (M r)_F) is broken by truncating S. Needs Z support in
+          ml_twins (P^# = P0^T - Z Q0^T, h = [Z y; y], P~ = [I + Z S~; S~]).
 
 ## Results of the autonomous search
 (append: date/iteration, idea, setup, numbers, verdict)
@@ -141,3 +147,18 @@ Problems:
   (`indef_search.py`, dense, m=15): whenever the twin diverges, N diverges too (1.3-1.8). The Galerkin coarse
   correction of strongly indefinite A breaks down. Dropped.
 - Running: strong test at Pe 14 (θ 0.5, k 8, wC 0.05).
+
+### Iteration 6
+- **Potential-well problems** (`well_search.py`, dense m=23): fitting the bound states into S~ puts them in
+  range(P~), so every method handles them and damped MJ converges (0.45). No separation.
+- **Pe 14 strong test** (`strong_test.py 127 14 0.5 8 0.05`): multilevel N diverges, MJ (wF 1, wC 0.03, k 16)
+  converges for 968 WU.
+- **PyAMG on constant flow** (`pyamg_const.py`): Pe 6: AIR converges (0.27, about 132 WU), far better than Claim 13's
+  N (840 WU). Pe 12: AIR and RS both fail, stand-alone and with GMRES.
+- **Pe 12 multilevel N** (`ml_blend.py`, θ 0.5, k 8, wC 0.05, cheap coarse): 0.397 / 20 cycles / 1159 WU (m=127);
+  0.418 / 21 / 1401 WU (m=255); m=511 running. Competitors at m=255 (`comp_short.py`): MJ wF 1, wC 0.05, k 16:
+  0.36 / 19 cycles / **919 WU**, which beats N.
+- **Conclusion for the red-black family.** With K = 0 (red-black, ω_F=1), the Markovian cycle "F-solve +
+  slow C-Richardson on the Schur complement" is strong and matches or beats N. To first order in ω_C·k, both N and
+  MJ are O(ω_C k) perturbations of the twin. The strong target needs a split where no pointwise F-solve is available.
+  Next: idea 20 (non-injective Q).
