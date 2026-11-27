@@ -37,8 +37,8 @@ def truncate(S, tau, mode):
 
 class ML:
     def __init__(self, A, omega=1.0, k0=4, k1=4, delta=0.3, tauP=0.0, mode="drop", trunc_from=0,
-                 tau_filter=1e-3, tau_deep=None, deep_from=8, refine=1, coarsest=None, max_levels=30):
-        self.nnz0, self.refine, self.omega = A.nnz, refine, omega
+                 tau_filter=1e-3, tau_deep=None, shift=0.0, deep_from=8, refine=1, coarsest=None, max_levels=30):
+        self.nnz0, self.refine, self.omega, self.shift, self.work = A.nnz, refine, omega, shift, 0.0
         nco = coarsest if coarsest else 16 * np.sqrt(A.shape[0])
         self.levels = []
         A = sp.csr_matrix(A)
@@ -114,7 +114,8 @@ class ML:
         y = np.zeros(len(F))
         for l in range(L.k):
             y = L.K @ y + L.H @ (xk[C] - xs[l][C])
-        d0 = xk[C] - x0[C]
+        j = int(round(self.shift * L.k))                             # coarse unknown = step-j error
+        d0 = xk[C] - xs[j][C]                                        # d^j = c_j - c_k
         xh = xk.copy(); xh[F] += y
         r = b - A @ xh
         e = self.coarse(lev, r[C] + L.ST @ r[F] + self.RAP(L, d0), which)

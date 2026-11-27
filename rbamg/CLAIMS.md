@@ -151,3 +151,20 @@ What follows from this:
   while N's best is 1719 WU and Markov-Jacobi's is 1756 WU. N's advantage is robustness over a wider range of
   truncation (its factor stays at or below 0.18 for $\tau\le0.5$), not cost. It wins only if a memory or communication
   budget forces $\tilde P$ below about 0.6 nnz(A). Tables: `results_twins_trunc_127.md`, `results_twins_mesh*.md`.
+
+### Claim 7b. Shift variant: coarse unknown = step-$j$ error (`ml_twins.py`, `shift=j/k`)
+
+N with coarse right-hand side $R\,r(x^{(k)}+h)+A_c d^j$, $d^j=c_j-c_k$, and correction $z=e-d^j$:
+
+$$E_je_0=\tilde P(I-B_cA_c)\,c_j+(I-\tilde PB_cRA)\,Q\big[(S-\tilde S)\,c_k+K^kq_0\big].$$
+
+The shift moves only the **coarse-cycle defect** $(I-B_cA_c)$, onto $c_j$. The truncation defect stays on $c_k$ for
+every $j$. So the shift cannot interpolate between N and the twin in the truncation term. The twin has both defects
+on $c_0$; $j=k$ puts both on $c_k$. (`check_shift.py`: the formula holds to 1e-13 for $j=0,k/2,k$ and $\tau=0,0.5$.)
+
+Results (factor / cycles / WU, `results_shift.md`):
+- Recirc Pe 20 ($T$ amplifies): with no truncation, $j=0$ and $j=k/2$ match the twin (0.0032 at m=255), while
+  $j=k$ fails (0.0032 → 4 cycles at m=127, diverges at m=255). The coarse defect acting on the amplified $c_k$ hurts.
+- Recirc Pe 2 and 5 ($T$ smooths): $j=0$, $k/2$ and $k$ agree to 3 digits in every row (m up to 511). The coarse
+  cycle is accurate enough that its defect is negligible; the gap to the twin comes entirely from the truncation term.
+- So $j=0$ (Alg 7.3) is the right choice: never worse, and much better when $T$ amplifies.
