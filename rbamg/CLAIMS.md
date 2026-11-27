@@ -349,3 +349,34 @@ Consequences:
 - $\hat T$ is not the $k$-th power of one sparse stationary step. It contains $k$ global sweeps and $k$ F-sweeps
   combined through $Q(S-\tilde S)P^\sharp$, and costs as much as N, or slightly more because it recomputes the
   sweeps from 0.
+
+## Claim 13. O(n), mesh-independent multilevel N where the twin and Markov-Jacobi on the same smoother diverge (`ml_rb.py`)
+
+**Problem.** Centered convection–diffusion on $(-1,1)^2$, constant flow $\beta=(\cos0.4,\sin0.4)$, cell Pe 6.
+
+**Hierarchy, shared by all methods** ($R=\tilde P^T$):
+- Level 0: red-black split (F = red, C = black), so $K=0$ and $G=0$ exactly. Jacobi with $\omega_F=1$,
+  $\omega_C=0.2$, $k=2$. $\tilde S$ = one entry per F-row carrying the full row sum of $S$.
+- Coarse levels: greedy split (δ=0.3), Jacobi $\omega=1$, $k=2$, $S$ truncated at 1e-2, filter 1e-2, V-cycle, sparse
+  LU below $16\sqrt n$.
+
+| m | n | levels | N: factor / cycles | WU/cycle | WU total | op.cx | twin | Markov-Jacobi |
+|---|---|---|---|---|---|---|---|---|
+| 127 | 16,129 | 6 | 0.365 / 19 | 44 | 840 | 4.16 | 1.36, diverges | 2.06, diverges |
+| 255 | 65,025 | 7 | 0.364 / 19 | 49 | 925 | 4.48 | 1.40, diverges | 2.07, diverges |
+| 511 | 261,121 | 9 | 0.363 / 19 | 53 | 1,013 | 4.82 | 1.39, diverges | 2.07, diverges |
+| 1023 | 1,046,529 | 10 | 0.362 / 19 | 55 | 1,053 | 4.93 | 1.38, diverges | 2.07, diverges |
+
+Two-level spectral radii ($\rho(E_N)$ / twin / MJ): 0.403 / 1.21 / 1.76 (m=63), 0.407 / 1.35 / 2.03 (127),
+0.406 / 1.39 / 1.81 (255).
+
+- **Cost.** nnz(A_ℓ)/nnz(A) at m=1023: 1.00, 0.70, 0.72, 0.82, 0.61, 0.42, 0.28, 0.18, 0.12, 0.08. This is a geometric
+  decay (ratio ≈ 0.65), so the operator complexity is bounded (≈ 5). The cycle count and factor are constant.
+  **N is O(n).**
+- **Caveat: the best Markovian cycle on the same hierarchy converges.** Sweeping $\omega_F$, $\omega_C$ and
+  $k\le16$ (`rb_competitors.py`, `rb_mjwork.py`), damped Markov-Jacobi with $\omega_F=0.8$, $\omega_C=0.16$, $k=16$
+  reaches 0.19–0.20, 12 cycles, about 500 WU, which is cheaper than N (840–925 WU). So this example shows N
+  converging in O(n) where the twin and Markov-Jacobi on the **same** smoother diverge. It does not show that no
+  Markovian cycle converges well.
+- Higher cell Pe (8–16), where damped Jacobi would be useless: with the single-entry $\tilde S$, N fails; with
+  2 entries, the twin converges (`rbpe.py`).

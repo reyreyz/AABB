@@ -47,8 +47,17 @@ Problems:
 - [ ] 9. Bound the coarse cost: per-level stencil caps on coarse levels while keeping the coarse factor ≤ 0.2.
 - [ ] 10. Variants of the coarse-correction restriction R (P~^T, hybrid) on level 0 only.
 
-- [ ] 12. Red-black split on level 0 (K = 0 and G = 0 exactly), single-entry lumped S~, k = 1-3, w_C scan.
-- [ ] 13. Multilevel O(n) version of the red-black candidate, with robust coarse levels.
+- [x] 12. Red-black split on level 0 (K = 0 and G = 0 exactly), single-entry lumped S~, k = 1-3, w_C scan.
+- [x] 13. Multilevel O(n) version of the red-black candidate, with robust coarse levels.
+
+- [ ] 14. STRONG target: also beat every damped Markovian cycle on the same hierarchy (MJ over w_F, w_C, k <= 32 and the
+          damped twin) by a clear margin in WU. Needs cell Pe where damped Jacobi is useless (Pe >= 10-12), with N still
+          converging under a crude S~.
+- [ ] 15. At Pe >= 8: S~ with 2 entries per row exact on constants only (tv = empty), or lumping at tau 0.5, so the twin
+          stays crude while N gets 2 entries.
+- [ ] 16. Red-black at Pe 6 with k = 3-4 and small w_C: N cheaper per digit? Compare against the MJ k=16 competitor.
+- [ ] 17. Other problem classes where damping cannot help: indefinite (Helmholtz-like) plus convection, or reaction
+          with negative sign, combined with the red-black mechanism.
 
 ## Results of the autonomous search
 (append: date/iteration, idea, setup, numbers, verdict)
@@ -88,3 +97,20 @@ Problems:
 
   **Candidate:** constant flow (angle 0.4), cell Pe 6, red-black level 0, k=2, ω_F=1, ω_C=0.2, single-entry
   lumped S~ (lin, nkeep=1). Two-level N is mesh-independent at 0.41; twin and MJ diverge. m=511 is running.
+
+### Iteration 3
+- **Idea 13, multilevel red-black candidate** (`ml_rb.py`, `results_ml_rb*.md`): constant flow Pe 6, cheap coarse
+  levels.
+
+| m | N factor / cycles | WU/cycle | WU total | op.cx | twin | MJ |
+|---|---|---|---|---|---|---|
+| 127 | 0.365 / 19 | 44 | 840 | 4.16 | div | div |
+| 255 | 0.364 / 19 | 49 | 925 | 4.48 | div | div |
+| 511 | 0.363 / 19 | 53 | 1013 | 4.82 | div | div |
+| 1023 | 0.362 / 19 | 55 | 1053 | 4.93 | div | div |
+
+  **O(n) and mesh-independent, recorded as Claim 13.**
+- **Competitors** (`rb_competitors.py`, `rb_mjwork.py`): damped Markov-Jacobi on the same hierarchy (wF 0.8,
+  wC 0.16, k=16) converges at 0.19-0.20 for about 500 WU, cheaper than N. The **strong** target is not met.
+- **Higher Pe with red-black** (`rbpe.py`, m=63): at Pe 8-16 only 2 entries per row give N < 0.8, and then the twin
+  converges (0.57-0.94).
