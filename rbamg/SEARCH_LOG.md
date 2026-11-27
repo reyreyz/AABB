@@ -207,3 +207,18 @@ Problems:
   The weak target (twin and plain MJ diverge, N converges O(n)) is met by Claim 13, but MJF matches it.
 - Remaining, lower-yield directions: (b) settings where T_Q / F-sweeps are unavailable (black-box smoother, Claim 4;
   this is the only setting where N is the only convergent option); (c) latency (Claim 6).
+
+### Iteration 10
+- **Claim 4 setting (black box)** (`bb_mjf.py`): MJF (black-box sweeps + one algebraic F-Jacobi step) converges
+  exactly like N, more cheaply (445 vs 646 WU at m=127; 901 vs 1359 at m=255). Recorded as a correction to Claim 4
+  in CLAIMS.md (Claim 14, addendum 2).
+- **Randomized falsification search** (`falsify.py`, 2 processes, `results_falsify_{1,2}.md`, runs until halted):
+  random flows, Pe 2-25, optional negative shift, random splits (red-black, greedy, random), random wF, wC, k,
+  truncation. Hit criterion: rho(N) < 0.7, the twin and MJ at N's weights ≥ 0.95, every MJF_m (m ≤ 2k) ≥ 0.95, and
+  then **work per digit** (sweeps + coarse cost 3, history 0.5 per step) of N at most half that of every extended
+  Markovian variant (MJF T^a F^b up to a = 2k+2, b = 12, F-weights wF and 1; damped MJ over a (w, wC, k) grid plus
+  F-sweeps; damped twins).
+  - First criterion (spectral radius only, narrow family): hits within about 100 samples (k=1, wF < 1, amplifying T).
+  - With the extended family and the cost criterion: **0 strong hits in 1000 samples**. Typical best competitor:
+    a differently damped twin (wF 0.3-0.5, k=1) or damped MJ (w 0.4, k 1-2), at about the same or lower work per
+    digit than N.

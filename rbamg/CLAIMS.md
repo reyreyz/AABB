@@ -423,3 +423,9 @@ cycle count as N** and costs less:
 **Correction to Claims 10, 11 and 13.** "Twin and Markov-Jacobi diverge, N converges" holds, but a simple Markovian
 cycle on the same smoother and hierarchy (one extra F-sweep before the correction) converges identically and more
 cheaply. Those examples do not show an advantage of the non-Markovian formalism over Markovian cycles in general.
+
+**Addendum 2 to Claim 14, black-box setting** (`bb_mjf.py`, `results_bb_mjf.md`). In Claim 4's setting (recirc Pe 20,
+undamped Jacobi with $\rho(T)\approx4.5$, robust hierarchy), MJF needs only the black-box sweeps plus one *algebraic*
+F-Jacobi step (no smoother restart). It converges exactly like N and more cheaply: m=127: N 2.2e-6, 2 cycles, 646 WU
+vs MJF 2.2e-6, 2 cycles, 445 WU; m=255: N 3.2e-3, 3 cycles, 1359 WU vs MJF 3.2e-3, 3 cycles, 901 WU.
+**Correction to Claim 4:** N is not the only convergent method under the black-box constraint; MJF also is.
