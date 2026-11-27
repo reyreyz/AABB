@@ -230,3 +230,28 @@ Caveats:
   exactly when N does (Claim 1).
 - N's guarantee needs a split that controls $K$ for the smoother actually used. The greedy split does this for
   Jacobi, not for Gauss–Seidel (the 36 "neither" Gauss–Seidel cases).
+
+## Claim 9. With a truncated $P'$, the twin can diverge while N converges (`twin_limit_scan.py`, `twin_div_k.py`, `twin_div_m63.py`)
+
+From Claim 7, with a fixed sparse $\tilde S$ and $k\to\infty$:
+$$E_{\rm twin}\to(I-\tilde\Pi)\,P'_\infty P^\sharp=(I-\tilde\Pi)\big[\tilde P+Q(S_\infty-\tilde S)\big]P^\sharp,\qquad
+E_N=(I-\tilde\Pi)\big[P'P^\sharp T^k+QK^kQ^\sharp\big]\to0\ \text{ if }\rho(T)<1 .$$
+- The twin's limit does not depend on the smoother, because $S_\infty=-A_{ff}^{-1}A_{fc}$ is the ideal prolongation.
+- For SPD $A$, $\|E_{\rm twin,\infty}\|_A\le1$, so the twin cannot diverge. It needs a nonsymmetric $A$.
+
+Example: centered recirc, Pe 10. Damped Jacobi with $\omega=0.1$ gives $\rho(T)=0.9995<1$. $\tilde P$ keeps one entry per
+row carrying the full row sum ($\tau=1$ lump, 0.1 nnz(A)). Exact coarse solve.
+
+| m | δ | k | $\rho(E_N)$ / cycles | $\rho(E_{\rm twin})$ | Markov-Jacobi | twin limit |
+|---|---|---|---|---|---|---|
+| 31 (eig) | 0.3 | 16 | 0.825 | 1.32 | 0.822 | 1.40 |
+| 31 (eig) | 0.3 | 64 | 0.136 | 1.40 | 0.157 | 1.40 |
+| 31 (eig) | 0.6 | 64 | 0.258 | 1.87 | 0.266 | 1.87 |
+| 63 (runs) | 0.3 | 64 | 0.20 / 15 cycles | 1.86, diverges | 0.165 / 14 | |
+| 63 (runs) | 0.6 | 64 | 0.864, no conv. in 60 | 5.43, diverges | 0.282 / 18 | |
+
+Caveats:
+- The plain Markovian cycle on the **same** smoother (k Jacobi sweeps, then $\tilde P$ correction) converges as well as
+  N here. The twin fails because F-relaxation never touches the C-error, so the truncation defect hits the raw $c_0$.
+  This example breaks the twin equivalence in N's favour; it does not show N beating every Markovian scheme.
+- It needs $k=64$ heavily damped sweeps. At δ=0.6 and m=63, N has not converged within 60 cycles.
