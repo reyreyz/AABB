@@ -149,3 +149,24 @@ At m=255 and 511, N and M_F(4,0) have identical factors (3.17e-3). M_F(4,0) need
 - The cheapest robust solver for this problem is the Markovian M_F(4,0): 339 WU at m=511.
 - The non-Markovian scheme's distinction here is that it converges with a divergent relaxation
   (all-point Jacobi, $\rho(T)\approx4.5$), whose Markovian counterpart M_J blows up.
+
+## 8. Every non-Markovian scheme has a Markovian twin
+
+Take any decomposition $B=[P\;Q]$ with duals $P^\sharp$, $Q^\sharp$, relaxation $T=I-MA$, and
+$K=Q^\sharp TQ$, $H=Q^\sharp TP$, $P'=P+Q\sum_{\ell<k}K^\ell H$. Define the *projected relaxation*
+$$T_Q=I-QQ^\sharp MA .$$
+Then:
+- $P^\sharp T_Q=P^\sharp$, so the coarse components are left unchanged;
+- $Q^\sharp T_Q=Q^\sharp T$, so the F-dynamics are the same as those of $T$.
+
+Hence $T_Q^k=P'P^\sharp+QK^kQ^\sharp$, and with $(I-\Pi')P'=0$:
+$$E_{M}(T_Q)=(I-\Pi')\,T_Q^k=(I-\Pi')\,QK^kQ^\sharp=E_N\qquad\text{(Theorem 4.5)} .$$
+
+Checked numerically for a non-injective $Q=Q_0+PZ$ (LS feedback, CD, m=15): the two
+propagators agree to $3\cdot10^{-14}$.
+
+**Consequence.** If $Q$ and $Q^\sharp$ are sparse, then $T_Q$ is a sparse, O(n) Markovian relaxation
+with exactly the convergence of N. A problem where the sparse non-Markovian scheme converges and
+*no* Markovian scheme does therefore cannot exist. What N can beat are Markovian schemes with
+*standard* (pointwise or injected) relaxations. The formalism's contribution is to construct the
+non-standard relaxation $T_Q$ through the choice of complement.
