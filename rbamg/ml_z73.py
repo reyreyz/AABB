@@ -52,32 +52,39 @@ def bounded_pattern(A, C, F, K, H, q):
 
 def cap_rows(X, p, lump=False):
     """keep the p largest |entries| (off-diagonal when lump) per row; lump the rest
-    into the diagonal when lump=True (row sums preserved)."""
-    X = sp.csr_matrix(X)
-    rows, cols, vals = [], [], []
-    extra = np.zeros(X.shape[0])
-    for i in range(X.shape[0]):
-        s0, e0 = X.indptr[i], X.indptr[i + 1]
-        c, v = X.indices[s0:e0], X.data[s0:e0]
-        if lump:
-            dmask = c == i
-            dval = v[dmask].sum()
-            c, v = c[~dmask], v[~dmask]
-        if len(v) > p:
-            order = np.argsort(-np.abs(v))
-            keep, drop = order[:p], order[p:]
-            if lump:
-                extra[i] += v[drop].sum()
-            c, v = c[keep], v[keep]
-        rows += [i] * len(c)
-        cols += list(c)
-        vals += list(v)
-        if lump:
-            rows.append(i), cols.append(i), vals.append(dval)
-    Y = sp.csr_matrix((vals, (rows, cols)), shape=X.shape)
+    into the diagonal when lump=True (row sums preserved). Vectorized."""
+    X = sp.coo_matrix(X)
+    r, c, v = X.row, X.col, X.data
+    isd = (r == c) if lump else np.zeros(len(r), bool)
+    off = ~isd
+    ro, co, vo = r[off], c[off], v[off]
+    order = np.lexsort((-np.abs(vo), ro))            # by row, then |value| descending
+    ro, co, vo = ro[order], co[order], vo[order]
+    start = np.searchsorted(ro, ro, side="left")
+    rank = np.arange(len(ro)) - start
+    keep = rank < p
+    Y = sp.csr_matrix((vo[keep], (ro[keep], co[keep])), shape=X.shape)
     if lump:
-        Y = Y + sp.diags(extra)
+        extra = np.bincount(ro[~keep], weights=vo[~keep], minlength=X.shape[0])
+        dg = np.bincount(r[isd], weights=v[isd], minlength=X.shape[0])
+        Y = Y + sp.diags(dg + extra)
     return Y.tocsr()
+
+
+def _cap_drop(X, p):
+    """keep the diagonal and the p largest off-diagonal entries per row (no lumping)."""
+    X = sp.csr_matrix(X)
+    D = sp.diags(X.diagonal())
+    return (cap_rows(X - D, p) + D).tocsr()
+
+
+def drop_rel(X, tau):
+    """drop entries below tau * (row max |x|) (no lumping)."""
+    X = sp.coo_matrix(X)
+    mx = np.zeros(X.shape[0])
+    np.maximum.at(mx, X.row, np.abs(X.data))
+    keep = np.abs(X.data) >= tau * mx[X.row]
+    return sp.csr_matrix((X.data[keep], (X.row[keep], X.col[keep])), shape=X.shape)
 
 
 class Level:
@@ -90,7 +97,7 @@ class Alg73Z:
                  delta_coarse=None, z_levels=99, k_coarse=None, coarse="recursive", coarse_cycles=2,
                  theta=1.0, thetas=(0.0, 0.25, 0.5, 0.75, 1.0), pc_mask=None,
                  zpattern="dist2", z_from=0, refine_levels=-1,
-                 tau_deep=None, deep_from=8):
+                 tau_deep=None, deep_from=8, cap_from=1, tauP=0.0, tauP_from=1, cap_lump=True):
         self.k, self.markov = k, markov
         self.nnz0 = A.nnz
         self.levels = []
@@ -165,8 +172,10 @@ class Alg73Z:
             for _ in range(kl - 1):
                 V = (KZ @ V).tocsr()
                 S = (S + V).tocsr()
-            if capP:
+            if capP and lev >= cap_from:
                 S = cap_rows(S, capP)                       # bounded P' rows
+            if tauP > 0 and lev >= tauP_from:
+                S = drop_rel(S, tauP)                       # small entries of P'_F dropped
             ZS = (Z @ S).tocsr()
             if pc_mask == "diag":                           # no new fill: A_sigma has N's pattern
                 ZS = sp.diags(ZS.diagonal()).tocsr()
@@ -183,8 +192,8 @@ class Alg73Z:
             L.Acc, L.Acf, L.Asig, L.D = Acc, Acf, Asig, A.diagonal()
             tau_l = tau_deep if (tau_deep is not None and lev + 1 >= deep_from) else tauA
             A = mc.filter_rowmax(Asig, tau_l)                # Alg. 7.3: 1e-3 above level 8, 3e-5 below
-            if capA:
-                A = cap_rows(A, capA, lump=True)            # bounded coarse stencils
+            if capA and lev + 1 >= cap_from:
+                A = cap_rows(A, capA, lump=True) if cap_lump else _cap_drop(A, capA)   # bounded coarse stencils
             A.eliminate_zeros()
         self.setup_time = time.time() - t
 
