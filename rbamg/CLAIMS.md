@@ -113,3 +113,41 @@ injection; rounds are sparse matvecs on the critical path, counting one halo exc
 
 The rounds are $k+5$ for N and $2k+2$ for the twin when $Q$ is non-injective, and $k+3$ against $k+2$ for $Q_0$. Full
 table: `results_claims_F.md`. **Caveat:** these are counts from a latency model, not timings of a parallel run.
+
+## Claim 7. In the multilevel, sparsified setting N and its twin differ only through truncation of $P'$ (`ml_twins.py`)
+
+Setup: both cycles share the hierarchy $\tilde P=[I;\tilde S]$, $R=\tilde P^T$, $A_c=R A\tilde P$ (applied exactly), and a
+filtered next-level operator. The coarse cycle $B_c$ is any linear map: filtering, recursion, refinement or LU.
+N's history uses the exact $K,H$. With $c_\ell=P^\sharp e^{(\ell)}$ and $d^0=c_0-c_k=P^\sharp(I-T^k)e_0$:
+
+$$E_N e_0-E_{\rm twin}e_0=-(I-\tilde P B_c R A)\,Q(S-\tilde S)\,d^0,$$
+
+which is equivalent to
+
+$$E_{\rm twin}e_0=(I-\tilde PB_cRA)\big[\tilde Pc_0+Q(S-\tilde S)\,c_0+QK^kq_0\big],\qquad
+E_N e_0=(I-\tilde PB_cRA)\big[\tilde Pc_0+Q(S-\tilde S)\,c_k+QK^kq_0\big].$$
+
+So an inexact coarse solve, filtering and recursion change both cycles in exactly the same way. The only difference is
+which C-error the truncation defect $S-\tilde S$ acts on: the raw $c_0$ for the twin, and $c_k=P^\sharp T^ke_0$, the
+C-error after $k$ global sweeps, for N.
+
+Check (`check_twins.py`, m=63): with no truncation, N and the twin agree after one cycle to 1e-13 (Poisson) and 1e-7
+(recirc Pe 20, where $\rho(T)^k$ amplifies roundoff), with filtering, recursion and refinement all active. With
+truncation 1e-2 on two levels, the formula matches the measured difference to 1.2e-11.
+
+What follows from this:
+- If $T$ amplifies the C-error (recirc Pe 20, $\rho(T)=4.5$), N is **less** robust. With truncation 1e-2, N's factor
+  is 0.42 against the twin's 0.010; at 1e-1, N diverges while the twin's factor is 0.90.
+- If $T$ smooths the C-error and the truncation keeps row sums (smooth $c$ is then reproduced exactly), N is **more**
+  robust. Recirc Pe 2, Jacobi $\omega=0.8$, $k$=4/8, truncation 0.5 lump ($\tilde P$ nnz $\approx0.5\,$nnz(A)):
+
+| m | N: factor / cycles / WU | twin | Markov-Jacobi (same $\tilde P$) |
+|---|---|---|---|
+| 127 | 0.159 / 11 / 1307 | 0.45 / 23 / 810 | 0.30 / 16 / 1383 |
+| 255 | 0.167 / 11 / 1625 | 0.66 / no conv. | 0.32 / 16 / 1673 |
+| 511 | 0.175 / 11 / 1719 | 0.71 / no conv. | 0.32 / 17 / 1874 |
+
+- **But with each method at its best truncation (m=511, Pe 2):** the twin at 0.1 lump reaches 0.114 / 9 cycles / **639 WU**,
+  while N's best is 1719 WU and Markov-Jacobi's is 1756 WU. N's advantage is robustness over a wider range of
+  truncation (its factor stays at or below 0.18 for $\tau\le0.5$), not cost. It wins only if a memory or communication
+  budget forces $\tilde P$ below about 0.6 nnz(A). Tables: `results_twins_trunc_127.md`, `results_twins_mesh*.md`.
