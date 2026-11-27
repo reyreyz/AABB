@@ -98,7 +98,7 @@ class Alg73Z:
                  theta=1.0, thetas=(0.0, 0.25, 0.5, 0.75, 1.0), pc_mask=None,
                  zpattern="dist2", z_from=0, refine_levels=-1,
                  tau_deep=None, deep_from=8, cap_from=1, tauP=0.0, tauP_from=1, cap_lump=True, n_refine=1,
-                 coarsest=None, restrict="inj"):
+                 coarsest=None, restrict="inj", refine_small=0, n_refine_small=1):
         self.k, self.markov = k, markov
         self.nnz0 = A.nnz
         self.levels = []
@@ -108,6 +108,7 @@ class Alg73Z:
         self.restrict = restrict      # 'inj': R = [I 0];  'ppt': R = P'^T (Galerkin with P')
         self.refine_levels = refine_levels      # Alg. 7.3: refinement steps on levels <= this
         self.n_refine = n_refine
+        self.refine_small, self.n_refine_small = refine_small, n_refine_small   # extra refinement on small levels
         while True:
             L = Level()
             L.A = A
@@ -275,8 +276,11 @@ class Alg73Z:
             work[0] += (2 * (L.PpC.nnz + L.PpF.nnz) + L.AFF.nnz + L.AFC.nnz) / nz
         work[0] += (L.Z.nnz + A.nnz + L.Acc.nnz + L.Acf.nnz + L.PpC.nnz + L.PpF.nnz) / nz
         e0 = self.cycle(lev + 1, rc, np.zeros(len(C)), work)
-        if lev <= self.refine_levels and not hasattr(self.levels[lev + 1], "lu"):
-            for _ in range(self.n_refine):
+        # extra refinement only at the first level below the size threshold (not nested)
+        small = bool(self.refine_small) and L.A.shape[0] <= self.refine_small and \
+            (lev == 0 or self.levels[lev - 1].A.shape[0] > self.refine_small)
+        if (lev <= self.refine_levels or small) and not hasattr(self.levels[lev + 1], "lu"):
+            for _ in range(self.n_refine if lev <= self.refine_levels else self.n_refine_small):
                 # refinement: e0 += cycle(r_c - A_sigma e0), A_sigma exact (matrix-free)
                 Ae0 = self._RAP(L, e0)
                 work[0] += (L.Acc.nnz + L.Acf.nnz + L.PpC.nnz + L.PpF.nnz) / nz
