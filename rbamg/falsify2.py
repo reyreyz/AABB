@@ -6,10 +6,16 @@ import sys, time, numpy as np, scipy.sparse as sp
 from robust_n import greedy_f_points, drop_rel
 from ml_twins import truncate_lin
 rho = lambda X: np.abs(np.linalg.eigvals(X)).max()
+FOCUS = len(sys.argv) > 3 and sys.argv[3] == 'focus'
 seed = int(sys.argv[1]); rng = np.random.default_rng(seed); out = open(sys.argv[2], "a"); CC = 3.0
 wpd = lambda r, sw: (sw + CC) / (-np.log10(r)) if r < 1 else np.inf
 
 def draw():
+    if FOCUS:
+        return dict(m=int(rng.integers(15, 22)), a=rng.normal(size=6), f1=rng.uniform(0.5, 2), f2=rng.uniform(0.5, 2),
+                    pe=rng.uniform(8, 25), shift=0.0, sk=int(rng.integers(0, 2)), delta=rng.uniform(0.2, 0.6),
+                    wf=rng.uniform(0.5, 0.9), wc=rng.uniform(0.2, 1.0), k=int(rng.integers(1, 3)), tk=int(rng.integers(0, 3)),
+                    nk=int(rng.integers(1, 3)), lin=bool(rng.random() < 0.5), tau=rng.uniform(0.2, 0.9), theta=rng.uniform(0, 0.8))
     return dict(m=int(rng.integers(9, 15)), a=rng.normal(size=6), f1=rng.uniform(0.5, 2), f2=rng.uniform(0.5, 2),
                 pe=rng.uniform(2, 25), shift=float(rng.choice([0.0, 0.0, rng.uniform(0, 3)])), sk=int(rng.integers(0, 2)),
                 delta=rng.uniform(0.1, 0.9), wf=rng.uniform(0.5, 1.0), wc=rng.uniform(0, 1.0), k=int(rng.integers(1, 7)),

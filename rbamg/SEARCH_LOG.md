@@ -233,3 +233,9 @@ Problems:
 - **New search `falsify2.py`** (seeds 21, 22, running): every strong hit is rebuilt at 2m+1 with the same flow and
   parameters and must stay strong ("PERSISTENT HIT"). Random splits are excluded (not scalable). Live logs are in
   the scratchpad; snapshots are committed each iteration. v1 logs: `results_falsify_v1_seed{11,12}.md`.
+
+### Iteration 12
+- falsify2 (persistence-checked): seed 21 at 1000 samples, seed 22 at 1500 samples; **no hits, transient or
+  persistent**.
+- Replaced seed 22 by a **focused** process (seed 31, `falsify2.py 31 <log> focus`): the region of the v1 hits
+  (k 1-2, wF 0.5-0.9, Pe 8-25, greedy/red-black) on larger base grids m = 15-21 (persistence checked at 2m+1 = 31-43).
