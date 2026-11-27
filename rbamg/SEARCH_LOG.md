@@ -195,3 +195,15 @@ Problems:
           accuracy across the Claim 10/11/13 families?); (b) problems where an F-sweep is much more expensive than the
           history update (F-block with dense or expensive T_Q, e.g. Gauss-Seidel T where T_Q is not available
           pointwise); (c) the latency setting (Claim 6).
+
+### Iteration 9
+- **Shift lever tested** (`results_mjf_ml.md`): multilevel MJF (k sweeps + 1 F-sweep + correction, recursive)
+  reproduces N's factor and cycles exactly on the Claim 11 and Claim 13 hierarchies at m=127/255, and is 25-35%
+  cheaper. The step-0 coarse unknown gives no advantage there.
+- **State of the strong target.** Ruled out within "same T, Q, P~" comparisons by Claim 14 and Claim 7:
+  - untruncated: twin ≡ N;
+  - truncated, T contracting: MJF ≈ N;
+  - truncated, T amplifying: twin ≥ N.
+  The weak target (twin and plain MJ diverge, N converges O(n)) is met by Claim 13, but MJF matches it.
+- Remaining, lower-yield directions: (b) settings where T_Q / F-sweeps are unavailable (black-box smoother, Claim 4;
+  this is the only setting where N is the only convergent option); (c) latency (Claim 6).

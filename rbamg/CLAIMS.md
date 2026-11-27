@@ -408,3 +408,18 @@ correction), N cannot win by a wide margin. The examples where "only N converges
 the twin and plain Markov-Jacobi only; ${\rm MJF}_k$ reproduces them. The one structurally non-Markovian advantage left
 is the step-0 coarse unknown under inexact multilevel coarse solves (Claim 7c), which matters only when $T$
 amplifies, where the twin is already as good as N.
+
+**Addendum to Claim 14, multilevel** (`results_mjf_ml.md`). On the Claim 11 and Claim 13 hierarchies, the Markovian
+cycle "k sweeps of T + 1 F-sweep + $\tilde P$ correction" (MJF, applied recursively) has **exactly the same factor and
+cycle count as N** and costs less:
+
+| hierarchy | m | N: factor / cycles / WU | MJF: factor / cycles / WU |
+|---|---|---|---|
+| Claim 11 (recirc Pe 10, ω_C 0.6) | 127 | 0.301 / 16 / 1872 | 0.301 / 16 / 1263 |
+| Claim 11 | 255 | 0.343 / 18 / 3012 | 0.343 / 18 / 1968 |
+| Claim 13 (const Pe 6, red-black) | 127 | 0.365 / 19 / 840 | 0.365 / 19 / 666 |
+| Claim 13 | 255 | 0.364 / 19 / 925 | 0.364 / 19 / 709 |
+
+**Correction to Claims 10, 11 and 13.** "Twin and Markov-Jacobi diverge, N converges" holds, but a simple Markovian
+cycle on the same smoother and hierarchy (one extra F-sweep before the correction) converges identically and more
+cheaply. Those examples do not show an advantage of the non-Markovian formalism over Markovian cycles in general.
