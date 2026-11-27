@@ -18,6 +18,8 @@ CONFIGS = [   # level-dependent filter as in Algorithm 7.3: tau = 1e-3 on levels
     ("k=4/6, refine 0-3", dict(k=4, k_coarse=6, refine_levels=3, tau_deep=3e-5)),
     ("k=4/6, refine 0-1", dict(k=4, k_coarse=6, refine_levels=1, tau_deep=3e-5)),
     ("k=4/12, refine 0-1", dict(k=4, k_coarse=12, refine_levels=1, tau_deep=3e-5)),
+    ("k=4/6, refine 0-2", dict(k=4, k_coarse=6, refine_levels=2, tau_deep=3e-5)),
+    ("k=4/8, refine 0-1", dict(k=4, k_coarse=8, refine_levels=1, tau_deep=3e-5)),
 ]
 
 
