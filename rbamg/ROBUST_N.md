@@ -170,3 +170,10 @@ with exactly the convergence of N. A problem where the sparse non-Markovian sche
 *no* Markovian scheme does therefore cannot exist. What N can beat are Markovian schemes with
 *standard* (pointwise or injected) relaxations. The formalism's contribution is to construct the
 non-standard relaxation $T_Q$ through the choice of complement.
+
+**On iterates.** $T_Q$ has the standard form $I-\widetilde MA$ with $\widetilde M=QQ^\sharp M$: one step is
+$x\leftarrow x+Q\,Q^\sharp\,M\,(b-Ax)$, computed from the residual only. F-relaxation is the special case
+$\widetilde M=Q_0Q_0^\sharp D^{-1}$.
+
+Checked on iterates (CD, m=15, $Q=Q_0+PZ$): $k$ such steps followed by the Petrov–Galerkin correction
+with $P'$ give the same $x$ as Algorithm 4.2 with complement $Q$, up to $8\cdot10^{-16}$ relative.
