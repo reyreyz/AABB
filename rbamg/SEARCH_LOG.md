@@ -33,10 +33,12 @@ Problems:
 - WU/cycle is still rising (geometric bound only).
 
 ## Idea queue (mark [x] when tried, add results below)
-- [ ] 1. Diagnose the slow mode of two-level N at m=511/1023 with ω_C=0.6: smooth or oscillatory, where it is
+- [ ] 11. Flows without closed streamlines (constant, Poiseuille, hyperbolic) at moderate cell Pe (5-8): the recirc
+          creep is a closed-streamline coarse-grid effect.
+- [x] 1. Diagnose the slow mode of two-level N at m=511/1023 with ω_C=0.6: smooth or oscillatory, where it is
          localized (vortex centre, boundary, stagnation points).
 - [ ] 2. Choose the kept entries of $\tilde S$ by geometry (nearest C-points spanning a simplex) rather than magnitude.
-- [ ] 3. Constant-flow centered CD instead of recirc (no vortex centre / stagnation), cell Pe 5/10/20.
+- [x] 3. Constant-flow centered CD instead of recirc (no vortex centre / stagnation), cell Pe 5/10/20.
 - [ ] 4. Make ω_C row-dependent (local cell Pe), or optimize ω_C per mesh.
 - [ ] 5. Smaller δ (0.1–0.2), or the F-set chosen to make $\|K\|_\infty$ ≈ 0 exactly.
 - [ ] 6. k=2 with very small ω_C (0.1–0.3), with C-weights tuned.
@@ -47,3 +49,21 @@ Problems:
 
 ## Results of the autonomous search
 (append: date/iteration, idea, setup, numbers, verdict)
+
+### Iteration 1
+- **Idea 1, slow modes of two-level N** (recirc, ω_C=0.6; `diag_slow.py`, `results_diag_slow.md`):
+  - (a) an oscillatory complex pair localized at the boundary where |β| is largest (|λ|=0.37 at m=255, 0.40 at
+    m=511; peak near (0.19,-0.97));
+  - (b) from m=511 on, a **smooth** real mode on the closed streamlines (0.2<r<0.7), |λ|=0.48, which dominates at
+    m=1023 (0.70).
+  (b) is the classical recirculating-flow coarse-grid difficulty: with fixed cell Pe the physical Pe grows like 1/h.
+  So the creep is a closed-streamline effect, not an N effect.
+- **Idea 3, constant flow at uniform cell Pe 10/20** (`constflow.py`): N diverges, or the twin converges. Too hard
+  everywhere.
+- **Idea 11, other flows at m=127** (`flowscan.py`, `results_flowscan.md`, two-level, ω_C 0.4/0.6, 2 entries/row):
+  - Poiseuille Pe 10: N 0.39, but the twin converges (0.53).
+  - Hyperbolic Pe 10: N 0.79, twin 2.2, MJ 3.7.
+  - **Constant flow Pe 6, ω_C=0.6: N 0.25, twin 1.18, MJ 2.44, a hit.**
+  - Constant flow Pe 3/4: the twin converges.
+- Mesh study of constant flow (`constmesh.py`): at m=63 the twin is 0.95–0.99 for Pe 6 and converges for Pe 5 and
+  Pe 8. m=255 and m=511 still running.
