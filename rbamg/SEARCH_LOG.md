@@ -33,7 +33,7 @@ Problems:
 - WU/cycle is still rising (geometric bound only).
 
 ## Idea queue (mark [x] when tried, add results below)
-- [ ] 11. Flows without closed streamlines (constant, Poiseuille, hyperbolic) at moderate cell Pe (5-8): the recirc
+- [x] 11. Flows without closed streamlines (constant, Poiseuille, hyperbolic) at moderate cell Pe (5-8): the recirc
           creep is a closed-streamline coarse-grid effect.
 - [x] 1. Diagnose the slow mode of two-level N at m=511/1023 with ω_C=0.6: smooth or oscillatory, where it is
          localized (vortex centre, boundary, stagnation points).
@@ -46,6 +46,9 @@ Problems:
 - [ ] 8. Other problems: 3-D centered convection, convection with reaction, Helmholtz-type with convection.
 - [ ] 9. Bound the coarse cost: per-level stencil caps on coarse levels while keeping the coarse factor ≤ 0.2.
 - [ ] 10. Variants of the coarse-correction restriction R (P~^T, hybrid) on level 0 only.
+
+- [ ] 12. Red-black split on level 0 (K = 0 and G = 0 exactly), single-entry lumped S~, k = 1-3, w_C scan.
+- [ ] 13. Multilevel O(n) version of the red-black candidate, with robust coarse levels.
 
 ## Results of the autonomous search
 (append: date/iteration, idea, setup, numbers, verdict)
@@ -67,3 +70,21 @@ Problems:
   - Constant flow Pe 3/4: the twin converges.
 - Mesh study of constant flow (`constmesh.py`): at m=63 the twin is 0.95–0.99 for Pe 6 and converges for Pe 5 and
   Pe 8. m=255 and m=511 still running.
+
+### Iteration 2
+- **Constant flow, greedy split, Claim 11b setup** (`constmesh.py`): Pe 5: N 0.22-0.28 at m=255, but the twin
+  converges (0.64-0.72). Pe 6: twin 0.95-0.99 at m=63 and **0.985 at m=511** (N 0.434). Marginal, dropped.
+- **Idea 12, red-black split at m=63** (`redblack.py`, `results_redblack.md`): several hits with the single-entry
+  S~ (twin 1.2-1.55).
+- **Red-black mesh study** (`rbmesh.py`, `results_rbmesh.md`; columns N / twin / MJ):
+
+| case | m=63 | m=127 | m=255 |
+|---|---|---|---|
+| recirc Pe 10, k=1, wC 0.8 | 0.30 / 1.42 / 2.44 | 0.36 / 1.73 / 2.97 | 0.81 / 2.09 / 3.46 (creeps) |
+| const Pe 6, k=1, wC 1.0 | 0.40 / 1.22 / 2.64 | 0.58 / 1.35 / 3.11 | 0.72 / 1.38 / 3.45 (creeps) |
+| const Pe 6, k=1, wC 0.8 | | 0.56 / 1.35 / 2.48 | 0.56 / 1.41 / 2.99 |
+| **const Pe 6, k=2, wC 0.2** | **0.403 / 1.21 / 1.76** | **0.407 / 1.35 / 2.03** | **0.406 / 1.39 / 1.81** |
+| recirc Pe 20, k=1, wC 0.4, 2 entries | 0.78 / 2.65 / 8.76 | 0.85 / 3.47 / 9.17 | 1.02 (fails) |
+
+  **Candidate:** constant flow (angle 0.4), cell Pe 6, red-black level 0, k=2, ω_F=1, ω_C=0.2, single-entry
+  lumped S~ (lin, nkeep=1). Two-level N is mesh-independent at 0.41; twin and MJ diverge. m=511 is running.

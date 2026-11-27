@@ -53,7 +53,7 @@ def truncate(S, tau, mode):
 
 class ML:
     def __init__(self, A, omega=1.0, k0=4, k1=4, delta=0.3, tauP=0.0, mode="drop", trunc_from=0,
-                 tau_filter=1e-3, tau_deep=None, shift=0.0, restrict="ppt", omega_c=None, xy=None, nkeep=3, lin_levels=99, tauP_deep=None, wc_levels=99, tv=None, deep_from=8, refine=1, coarsest=None, max_levels=30):
+                 tau_filter=1e-3, tau_deep=None, shift=0.0, restrict="ppt", omega_c=None, xy=None, nkeep=3, lin_levels=99, tauP_deep=None, wc_levels=99, tv=None, split0=None, deep_from=8, refine=1, coarsest=None, max_levels=30):
         self.nnz0, self.refine, self.omega, self.shift, self.work = A.nnz, refine, omega, shift, 0.0
         self.restrict, self.omega_c = restrict, omega_c
         nco = coarsest if coarsest else 16 * np.sqrt(A.shape[0])
@@ -67,7 +67,7 @@ class ML:
             if A.shape[0] < nco or lev + 1 == max_levels:
                 L.lu = sla.splu(sp.csc_matrix(A))
                 break
-            isF = greedy_f_points(A, delta)
+            isF = split0 if (split0 is not None and lev == 0) else greedy_f_points(A, delta)
             C, F = np.nonzero(~isF)[0], np.nonzero(isF)[0]
             Acc, Acf, Afc, Aff = A[C][:, C], A[C][:, F], A[F][:, C], A[F][:, F]
             Dfi = sp.diags(omega / Aff.diagonal())
