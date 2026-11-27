@@ -20,6 +20,22 @@ def poisson(m, eps_y=1.0):
     return (sp.kron(sp.eye(m), T1) + eps_y * sp.kron(T1, sp.eye(m))).tocsr()
 
 
+def truncate_lin(S, Bc, s=3):
+    """keep the s largest |S_ij| per row, then the minimal change that matches S on the columns of Bc
+    (test vectors on C, e.g. 1, x, y):  w = s_k + B_k^T (B_k B_k^T)^+ (B s_i - B_k s_k)."""
+    S = sp.csr_matrix(S); rows, cols, vals = [], [], []
+    for i in range(S.shape[0]):
+        idx, v = S.indices[S.indptr[i]:S.indptr[i + 1]], S.data[S.indptr[i]:S.indptr[i + 1]]
+        if len(idx) == 0: continue
+        keep = np.argsort(-np.abs(v))[:s]; ik, vk = idx[keep], v[keep]
+        Bk = Bc[ik].T                                        # p x s
+        target = Bc[idx].T @ v                               # B s_i
+        w = vk + Bk.T @ np.linalg.lstsq(Bk @ Bk.T, target - Bk @ vk, rcond=None)[0] if len(ik) > 1 else \
+            np.array([target[0]])
+        rows += [i] * len(ik); cols += list(ik); vals += list(w)
+    return sp.csr_matrix((vals, (rows, cols)), S.shape)
+
+
 def truncate(S, tau, mode):
     St = drop_rel(S, tau)
     if mode == "lump":                                   # keep row sums: S~ 1 = S 1
@@ -37,8 +53,9 @@ def truncate(S, tau, mode):
 
 class ML:
     def __init__(self, A, omega=1.0, k0=4, k1=4, delta=0.3, tauP=0.0, mode="drop", trunc_from=0,
-                 tau_filter=1e-3, tau_deep=None, shift=0.0, deep_from=8, refine=1, coarsest=None, max_levels=30):
+                 tau_filter=1e-3, tau_deep=None, shift=0.0, restrict="ppt", omega_c=None, xy=None, nkeep=3, deep_from=8, refine=1, coarsest=None, max_levels=30):
         self.nnz0, self.refine, self.omega, self.shift, self.work = A.nnz, refine, omega, shift, 0.0
+        self.restrict, self.omega_c = restrict, omega_c
         nco = coarsest if coarsest else 16 * np.sqrt(A.shape[0])
         self.levels = []
         A = sp.csr_matrix(A)
@@ -60,17 +77,25 @@ class ML:
             for _ in range(L.k - 1):
                 V = (K @ V).tocsr(); S = (S + V).tocsr()
             L.Sex = S                                                # exact sum_{l<k} K^l H
-            if tauP > 0 and lev >= trunc_from:
+            if mode == "lin" and lev >= trunc_from:
+                Bc = np.column_stack([np.ones(len(C)), xy[C]])
+                S = truncate_lin(S, Bc, nkeep)
+            elif tauP > 0 and lev >= trunc_from:
                 S = truncate(S, tauP, mode)
+            if xy is not None: xy = xy[C]
             L.C, L.F, L.K, L.H, L.S, L.ST = C, F, K, H, S, S.T.tocsr()
+            L.w = np.full(A.shape[0], omega); L.w[C] = omega if omega_c is None else omega_c
             L.AFC, L.AFF = Afc.tocsr(), Aff.tocsr()
             L.APc, L.APf = (Acc + Acf @ S).tocsr(), (Afc + Aff @ S).tocsr()
             tf = tau_deep if (tau_deep and lev + 1 >= deep_from) else tau_filter
-            A = filter_lumped((L.APc + L.ST @ L.APf).tocsr(), tf) if tf else \
-                (L.APc + L.ST @ L.APf).tocsr()
+            Acn = (L.APc + L.ST @ L.APf).tocsr() if restrict == "ppt" else L.APc   # R A P~, R = P~^T or [I 0]
+            A = filter_lumped(Acn, tf) if tf else Acn
 
     def RAP(self, L, v):
-        return L.APc @ v + L.ST @ (L.APf @ v)
+        return L.APc @ v + L.ST @ (L.APf @ v) if self.restrict == "ppt" else L.APc @ v
+
+    def Rr(self, L, r):
+        return r[L.C] + L.ST @ r[L.F] if self.restrict == "ppt" else r[L.C].copy()
 
     def coarse(self, lev, rc, which):
         e = self.cycle(lev + 1, rc, np.zeros(len(rc)), which)
@@ -96,20 +121,20 @@ class ML:
             for _ in range(L.k):
                 x[F] += w * (g - L.AFF @ x[F]) / L.D[F]
             r = b - A @ x
-            e = self.coarse(lev, r[C] + L.ST @ r[F], which)
+            e = self.coarse(lev, self.Rr(L, r), which)
             x[C] += e; x[F] += L.S @ e
             return x
         if which == "markovJ":                                       # k global Jacobi, then P~ correction
             x = x0.copy()
             for _ in range(L.k):
-                x = x + w * (b - A @ x) / L.D
+                x = x + L.w * (b - A @ x) / L.D
             r = b - A @ x
-            e = self.coarse(lev, r[C] + L.ST @ r[F], which)
+            e = self.coarse(lev, self.Rr(L, r), which)
             x[C] += e; x[F] += L.S @ e
             return x
         xs = [x0]                                                    # N (Alg 7.3)
         for _ in range(L.k):
-            xs.append(xs[-1] + w * (b - A @ xs[-1]) / L.D)
+            xs.append(xs[-1] + L.w * (b - A @ xs[-1]) / L.D)
         xk = xs[-1]
         y = np.zeros(len(F))
         for l in range(L.k):
@@ -119,7 +144,7 @@ class ML:
         d0 = xk[C] - xs[j][C]                                        # d^j = c_j - c_k
         xh = xk.copy(); xh[F] += y
         r = b - A @ xh
-        e = self.coarse(lev, r[C] + L.ST @ r[F] + self.RAP(L, d0), which)
+        e = self.coarse(lev, self.Rr(L, r) + self.RAP(L, d0), which)
         z = e - d0
         xh[C] += z; xh[F] += L.S @ z
         return xh

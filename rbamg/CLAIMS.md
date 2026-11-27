@@ -255,3 +255,34 @@ Caveats:
   N here. The twin fails because F-relaxation never touches the C-error, so the truncation defect hits the raw $c_0$.
   This example breaks the twin equivalence in N's favour; it does not show N beating every Markovian scheme.
 - It needs $k=64$ heavily damped sweeps. At δ=0.6 and m=63, N has not converged within 60 cycles.
+
+## Claim 10. Twin and Markov-Jacobi both diverge, N converges (two-level) (`search_missing.py`, `missing3*.py`, `missing4.py`, `missing5.py`)
+
+With $P_0,Q_0$ and $(I-\tilde\Pi)\tilde P=0$:
+$$E_N=(I-\tilde\Pi)Q\big[(S-\tilde S)P^\sharp T^k+K^kQ^\sharp\big],\quad
+E_{\rm twin}=(I-\tilde\Pi)Q\big[(S-\tilde S)P^\sharp+K^kQ^\sharp\big],\quad
+E_M=(I-\tilde\Pi)Q\,(Q^\sharp-\tilde SP^\sharp)\,T^k .$$
+What each method needs:
+- Markov-Jacobi diverges when $T^k$ grows away from range($P'$).
+- The twin diverges when the truncation defect on the raw $c_0$ is large.
+- N converges when $\rho(K)<1$ and $\tilde S$ is accurate on $c_k=P^\sharp T^ke_0$.
+
+**Example.** Centered recirc, cell Pe 10. Jacobi with $\omega_F=1$ on F-points and $\omega_C=0.8$ on C-points (all
+three methods use this same $T$). Greedy δ=0.3, so $\rho(K)\approx0$. $k=1$. $\tilde S$ keeps 2 entries per row,
+minimally adjusted to match $S$ on $1,x,y$ (0.2 nnz(A)). $R=\tilde P^T$, exact coarse solve.
+
+| m | n | $\rho(E_N)$ | $\rho(E_{\rm twin})$ | $\rho(E_M)$ | N from a random rhs |
+|---|---|---|---|---|---|
+| 127 | 16,129 | 0.564 | 1.01 | 5.94 | 40 cycles to 1e-10 (twin, MJ diverge) |
+| 255 | 65,025 | 0.609 | 1.13 | 6.03 | 48 cycles (twin, MJ diverge) |
+| 511 | 261,121 | 0.649 | 1.21 | 6.22 | |
+
+N's increments per refinement shrink (0.10, 0.06, 0.05, 0.04 from m=31) while the twin's radius keeps rising. At
+m≤63 the twin still converges (0.69, 0.82), so this is a hit only from m=127 on.
+Limits:
+- The best Markovian cycle over $\omega$, $\omega_C$ and $k$ on the same $\tilde P$ converges at 0.92 (m=127:
+  $\omega=0.4$, $k=2$, F-only), against 0.58 for N, i.e. about 6.5× more cycles per digit. So Markovian cycles on
+  this $\tilde P$ do not all diverge; they converge badly.
+- Multilevel version not achieved: with $k_c=1$, N stagnates (0.96–0.98); with $k_c=2$ it diverges.
+- Earlier attempts that failed: single-entry $\tilde P$ (N drifts to 0.92 at m=255), and the shifted Laplacian with
+  injection $R$ (a hit only at m=15).
