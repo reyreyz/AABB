@@ -119,6 +119,7 @@ class ML:
         ap = L.APc.nnz + L.APf.nnz
         self.work += {"twin": L.AFC.nnz + L.k * L.AFF.nnz + A.nnz + 2 * L.S.nnz,
                       "markovJ": (L.k + 1) * A.nnz + 2 * L.S.nnz,
+                      "markovJF": (L.k + 2) * A.nnz + 2 * L.S.nnz,
                       "hat": (2 * L.k + 2) * A.nnz + L.k * (L.K.nnz + L.H.nnz) + 3 * L.S.nnz,
                       "N": (L.k + 1) * A.nnz + L.k * (L.K.nnz + L.H.nnz) + 3 * L.S.nnz + ap}[which] / self.nnz0
         if lev <= self.refine and lev + 1 < len(self.levels) and not hasattr(self.levels[lev + 1], "lu"):

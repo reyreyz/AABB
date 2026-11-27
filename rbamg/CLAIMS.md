@@ -380,3 +380,31 @@ Two-level spectral radii ($\rho(E_N)$ / twin / MJ): 0.403 / 1.21 / 1.76 (m=63), 
   Markovian cycle converges well.
 - Higher cell Pe (8–16), where damped Jacobi would be useless: with the single-entry $\tilde S$, N fails; with
   2 entries, the twin converges (`rbpe.py`).
+
+## Claim 14. Dichotomy: N against two simple Markovian cycles on the same T, Q and $\tilde P$ (`dichotomy_check.py`, `first_order.py`)
+
+Two-level, exact coarse solve, any relaxation $T$, $P_0/Q_0$, any truncation $\tilde S$. Let ${\rm MJF}_k$ be the
+Markovian cycle "k sweeps of $T$, then k F-sweeps ($T_Q$), then the $\tilde P$ correction". Using
+$T_Q^m=P'_mP^\sharp+QK^mQ^\sharp$ and $(I-\tilde\Pi)\tilde P=0$:
+$$E_N=(I-\tilde\Pi)Q\big[(S_k-\tilde S)P^\sharp T^k+K^kQ^\sharp\big],\qquad
+E_{{\rm MJF}_k}=(I-\tilde\Pi)Q\big[(S_k-\tilde S)P^\sharp T^k+K^kQ^\sharp T^k\big],$$
+$$\boxed{E_N-E_{{\rm MJF}_k}=(I-\tilde\Pi)\,QK^kQ^\sharp\,(I-T^k)}$$
+With $K=0$ (red-black and $\omega_F=1$, or a greedy split with an independent F-set), one F-sweep suffices and
+**$E_N=E_{\rm MJF}$ exactly**.
+Check (32 cases, recirc Pe 6/20, greedy δ 0.3/0.6, k 2/4, $\omega_C$ 0.3/1, 1–2 entries): the identity holds to
+1e-15. N and ${\rm MJF}_k$ agree to 3 digits when $\rho(K)=0$; with $\rho(K)=0.43$, ${\rm MJF}_k$ is equal or slightly
+better (0.274 vs 0.344). On the red-black candidates (m=127), N 0.405 / 0.359 / 0.689 against "MJ + 1 F-sweep"
+0.407 / 0.359 / 0.689.
+
+**Consequence (with Claim 7, twin ≡ N without truncation).**
+- **Untruncated $P'$:** N ≡ twin, even multilevel.
+- **Truncated, $T$ contracts the C-error:** N ≈ ${\rm MJF}_k$. The difference is the $K^k$ term, which N needs to be
+  small anyway.
+- **Truncated, $T$ amplifies the C-error:** the twin beats N. Its truncation defect acts on $c_0$, N's on the
+  amplified $c_k$.
+
+So in comparisons that allow these simple Markovian cycles on the same $T$, $Q$ and $\tilde P$ (k T-sweeps, F-sweeps,
+correction), N cannot win by a wide margin. The examples where "only N converges" (Claims 10, 11, 13) are N against
+the twin and plain Markov-Jacobi only; ${\rm MJF}_k$ reproduces them. The one structurally non-Markovian advantage left
+is the step-0 coarse unknown under inexact multilevel coarse solves (Claim 7c), which matters only when $T$
+amplifies, where the twin is already as good as N.

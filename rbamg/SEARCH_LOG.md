@@ -68,7 +68,7 @@ Problems:
           competitor; the twin (projected relaxation x += Q (M r)_F) is broken by truncating S. Needs Z support in
           ml_twins (P^# = P0^T - Z Q0^T, h = [Z y; y], P~ = [I + Z S~; S~]).
 
-- [ ] 21. Convection (red-black, crude blended S~, Pe 6-12, where the twin diverges) PLUS a localized potential well
+- [x] 21. Convection (red-black, crude blended S~, Pe 6-12, where the twin diverges) PLUS a localized potential well
           with a small diagonal (gamma 3-3.5, so mu < -d): every w_C > 0 amplifies the bound states (MJ and the
           Schur-Richardson competitor fail; w_C = 0 is the twin, which fails through truncation). N keeps S~ exact on
           the bound-state C-parts. Dense test first.
@@ -177,3 +177,21 @@ Problems:
   Reason: (HZ)_{i,:} = sum_{c in N_C(i)} H_ic Z_{c,:}, so feedback reaches only F-rows with C-neighbours.
   Cell-centre F-points under full coarsening have none, and their rows of K are untouched. Where K0 is already
   stable (semi-x at Pe 6/10), Z barely changes it. Dropped for this problem class.
+
+### Iteration 8
+- **Idea 21, convection + well** (`well_conv.py`, dense m=23): at Pe 6-10 the well creates no eigenvalues with
+  Re < 0 (convection carries error out, so there are no bound states). Where N < 0.75 and the twin diverges, damped
+  MJ still converges (0.21-0.67). Fails.
+- **First-order analysis, then an exact identity** (`first_order.py`, `dichotomy_check.py`, **Claim 14**):
+  E_N - E_MJF_k = (I - Pi~) Q K^k Q^# (I - T^k), where MJF_k = k T-sweeps + k F-sweeps + correction. With K = 0, N ≡ MJF
+  (two-level). Verified to 1e-15 in 32 cases, and on the red-black candidates (N 0.405 vs MJF 0.407, etc.).
+- **Consequence: the strong target is out of reach in the "same T, Q, P~" comparison.**
+  - Untruncated: N ≡ twin.
+  - Truncated, T contracting: N ≈ MJF_k.
+  - Truncated, T amplifying: twin ≥ N.
+  The identity holds for any T (block smoothers included) and any Q, so ideas 22 and the non-injective variants fall
+  under the same dichotomy. Remaining non-Markovian lever: the step-0 coarse unknown with inexact coarse solves.
+- [ ] 23. Remaining honest directions: (a) cost-matched comparisons (is MJF_k cheaper or dearer than N at equal
+          accuracy across the Claim 10/11/13 families?); (b) problems where an F-sweep is much more expensive than the
+          history update (F-block with dense or expensive T_Q, e.g. Gauss-Seidel T where T_Q is not available
+          pointwise); (c) the latency setting (Claim 6).
