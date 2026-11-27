@@ -15,12 +15,14 @@ from run_ml_nz import rate
 
 B = dict(k=4, k_coarse=8, refine_levels=1, tau_deep=3e-5)
 T = dict(B, tauP=1e-5)
+T3 = dict(T, tau_deep=3e-4)
+T3 = dict(T, tau_deep=3e-4)
 CONFIGS = [
-    ("tauP 1e-5", dict(T)),
-    ("tauP 1e-5, deep filter 1e-4", dict(T, tau_deep=1e-4)),
-    ("tauP 1e-5, deep filter 3e-4", dict(T, tau_deep=3e-4)),
-    ("tauP 1e-5, filter 1e-3 all levels", dict(T, tau_deep=1e-3)),
-    ("tauP 1e-5, deep filter 1e-4 from level 5", dict(T, tau_deep=1e-4, deep_from=5)),
+    ("bounded base (k=4/8, refine 0-1)", dict(T3)),
+    ("upper filter 3e-4", dict(T3, tauA=3e-4)),
+    ("upper filter 1e-4, deep 3e-4", dict(T3, tauA=1e-4)),
+    ("tauP 1e-6", dict(T3, tauP=1e-6)),
+    ("upper filter 3e-4, tauP 1e-6", dict(T3, tauA=3e-4, tauP=1e-6)),
 ]
 
 
@@ -35,6 +37,7 @@ def main(ms=(63, 127, 255), only=None):
             if only and lab not in only:
                 continue
             t = time.time()
+            kw = dict(kw)
             c = mzz.Alg73Z(A, zmode="Q0", delta=0.3, **kw)
             ts = time.time() - t
             t = time.time()
