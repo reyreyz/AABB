@@ -62,11 +62,18 @@ Problems:
 - [x] 18. Blended S~ = (1-theta) S~_1 + theta S~_2 (both exact on constants) at Pe 16-20, k 8-16, small w_C: widen the
           margin over damped Markov-Jacobi.
 
-- [ ] 20. NON-INJECTIVE Q = Q0 + P0 Z on level 0 (the user's original spec): choose a split where pointwise
+- [x] 20. NON-INJECTIVE Q = Q0 + P0 Z on level 0 (the user's original spec): choose a split where pointwise
           F-relaxation diverges (rho(K0) > 1, e.g. standard or full coarsening at high Pe) and Z such that
           K_Z = K0 + H Z is stable. Then no pointwise F-solve exists for the "F-solve + Schur-Richardson" Markovian
           competitor; the twin (projected relaxation x += Q (M r)_F) is broken by truncating S. Needs Z support in
           ml_twins (P^# = P0^T - Z Q0^T, h = [Z y; y], P~ = [I + Z S~; S~]).
+
+- [ ] 21. Convection (red-black, crude blended S~, Pe 6-12, where the twin diverges) PLUS a localized potential well
+          with a small diagonal (gamma 3-3.5, so mu < -d): every w_C > 0 amplifies the bound states (MJ and the
+          Schur-Richardson competitor fail; w_C = 0 is the twin, which fails through truncation). N keeps S~ exact on
+          the bound-state C-parts. Dense test first.
+- [ ] 22. Smoothers that are not pointwise: line/block Jacobi along the flow on level 0 (the history then uses block
+          K, H). Competitors would need the same blocks.
 
 ## Results of the autonomous search
 (append: date/iteration, idea, setup, numbers, verdict)
@@ -162,3 +169,11 @@ Problems:
   slow C-Richardson on the Schur complement" is strong and matches or beats N. To first order in ω_C·k, both N and
   MJ are O(ω_C k) perturbations of the twin. The strong target needs a split where no pointwise F-solve is available.
   Next: idea 20 (non-injective Q).
+
+### Iteration 7
+- **Idea 20, non-injective Q = Q0 + P0 Z** (`ml_z.py` implemented; `z_cr.py`, `results_z_cr.md`): splits with
+  rho(K0) > 1 (full coarsening; semi-x at Pe 20) cannot be stabilized by feedback. LS and KK optimized Z with q=2/4
+  change rho(K0 + HZ) by under 10% (e.g. 2.4 -> 2.25 at Pe 10; 4.94 -> 4.57 at Pe 20).
+  Reason: (HZ)_{i,:} = sum_{c in N_C(i)} H_ic Z_{c,:}, so feedback reaches only F-rows with C-neighbours.
+  Cell-centre F-points under full coarsening have none, and their rows of K are untouched. Where K0 is already
+  stable (semi-x at Pe 6/10), Z barely changes it. Dropped for this problem class.
