@@ -222,3 +222,14 @@ Problems:
   - With the extended family and the cost criterion: **0 strong hits in 1000 samples**. Typical best competitor:
     a differently damped twin (wF 0.3-0.5, k=1) or damped MJ (w 0.4, k 1-2), at about the same or lower work per
     digit than N.
+
+### Iteration 11
+- **First strong hit of the random search** (seed 12, sample 635; replayed with `replay.py`, generator `hitgen.py`):
+  m=9, random flow, cell Pe 20.5, greedy δ 0.395, wF = wC = 0.51, k=1, blended S~ (θ 0.52). N 0.575, twin 2.21,
+  MJ 4.5, best MJF 1.47. Best extended Markovian: damped MJ (w 0.2, wC 0.06, k 1) at rho 0.833, 2.2× N's work per
+  digit.
+- **Not persistent** (`hit_mesh.py`, `results_hit1_mesh.md`): on the same flow and parameters at m = 31/63/127, N
+  diverges (2.42 / 3.44 / 4.23). A small-grid artifact.
+- **New search `falsify2.py`** (seeds 21, 22, running): every strong hit is rebuilt at 2m+1 with the same flow and
+  parameters and must stay strong ("PERSISTENT HIT"). Random splits are excluded (not scalable). Live logs are in
+  the scratchpad; snapshots are committed each iteration. v1 logs: `results_falsify_v1_seed{11,12}.md`.
