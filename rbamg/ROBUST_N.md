@@ -113,3 +113,39 @@ The development code (`ml_z73.py`, with `restrict="ppt"` and `coarsest=16√n`) 
 m=1023 (n=1,046,529): factor 3.7e-3, 4 cycles.
 
 For comparison, your Algorithm 7.3 needs 14,254 WU at m=511 (with the development code's work count).
+
+## 7. Honest Markovian competitor
+
+**M_F(a, b)** is the Markovian Petrov–Galerkin cycle with the *same* split, $P'$,
+$\widehat R=P'^T$, $A_c$, truncation, filters, refinement and coarse LU as N. Its relaxation is
+$a$ Jacobi sweeps on the F-points before the coarse correction and $b$ after (`cycle_markov` in
+`robust_n.py`). **M_J** is the Markovian cycle with all-point Jacobi.
+
+**Equivalence.** F-Jacobi leaves $e_C$ unchanged and maps $e_F\mapsto Ke_F+He_C$, so
+$$T_F^k=\begin{bmatrix}I&0\\S&K^k\end{bmatrix}=P'P_0^\sharp+Q_0K^kQ_0^\sharp .$$
+The coarse correction $\Pi'=P'(\widehat RAP')^{-1}\widehat RA$ satisfies $(I-\Pi')P'=0$, hence
+$$E_{M_F(k,0)}=(I-\Pi')\,T_F^k=(I-\Pi')\,Q_0K^kQ_0^\sharp=E_N .$$
+N with $k$ all-point Jacobi steps has the same error propagator as M_F(k,0), because $E_N$ sees
+$T$ only through its F-rows ($K$, $H$). This extends Corollary 4.7. Each N cycle costs more for
+the same reduction: $k$ full sweeps, the history recursion, and the $A_cd^{(0)}$ term.
+
+Output of `compare_markov.py` (cycles to $10^{-8}$ / total WU):
+
+| m | N (ours) | M_J | M_F(2,0) | **M_F(4,0)** | M_F(8,0) | PyAMG AIR | PyAMG RS | N + GMRES | M_F(4,0) + GMRES |
+|---|---|---|---|---|---|---|---|---|---|
+| 127 | 2 / 785 | diverges | 4 / 337 | **2 / 174** | 2 / 186 | diverges | diverges | 5 / 1962 | 5 / 348 |
+| 255 | 3 / 1688 | diverges | 6 / 610 | **3 / 316** | 4 / 452 | diverges | diverges | 6 / 3375 | 6 / 527 |
+| 511 | 3 / 2128 | diverges | 6 / 650 | **3 / 339** | 4 / 489 | diverges | diverges | 6 / 4255 | 6 / 565 |
+
+PyAMG AIR and RS do not converge stand-alone, and not as GMRES preconditioners either
+(10,202 iterations without convergence).
+
+At m=255 and 511, N and M_F(4,0) have identical factors (3.17e-3). M_F(4,0) needs about
+113 WU per cycle against 709 for N.
+
+**Conclusion.**
+- The robustness and the O(n)-per-cycle cost come from the CR-adequate split, $P'$,
+  $\widehat R=P'^T$, the truncation and the early coarse LU, not from the non-Markovian history.
+- The cheapest robust solver for this problem is the Markovian M_F(4,0): 339 WU at m=511.
+- The non-Markovian scheme's distinction here is that it converges with a divergent relaxation
+  (all-point Jacobi, $\rho(T)\approx4.5$), whose Markovian counterpart M_J blows up.
