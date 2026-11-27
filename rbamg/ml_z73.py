@@ -89,13 +89,14 @@ class Alg73Z:
                  kk_iter=100, max_levels=99, capP=None, capA=None,
                  delta_coarse=None, z_levels=99, k_coarse=None, coarse="recursive", coarse_cycles=2,
                  theta=1.0, thetas=(0.0, 0.25, 0.5, 0.75, 1.0), pc_mask=None,
-                 zpattern="dist2", z_from=0):
+                 zpattern="dist2", z_from=0, refine_levels=-1):
         self.k, self.markov = k, markov
         self.nnz0 = A.nnz
         self.levels = []
         A = sp.csr_matrix(A)
         t = time.time()
         self.coarse, self.coarse_cycles = coarse, coarse_cycles
+        self.refine_levels = refine_levels      # Alg. 7.3: one refinement step on levels <= this
         while True:
             L = Level()
             L.A = A
@@ -234,6 +235,11 @@ class Alg73Z:
         rc = r[C] + L.Acc @ (L.PpC @ d[0]) + L.Acf @ (L.PpF @ d[0])
         work[0] += (L.Z.nnz + A.nnz + L.Acc.nnz + L.Acf.nnz + L.PpC.nnz + L.PpF.nnz) / nz
         e0 = self.cycle(lev + 1, rc, np.zeros(len(C)), work)
+        if lev <= self.refine_levels and not hasattr(self.levels[lev + 1], "lu"):
+            # refinement: e0 += cycle(r_c - A_sigma e0), A_sigma exact (matrix-free)
+            Ae0 = L.Acc @ (L.PpC @ e0) + L.Acf @ (L.PpF @ e0)
+            work[0] += (L.Acc.nnz + L.Acf.nnz + L.PpC.nnz + L.PpF.nnz) / nz
+            e0 = e0 + self.cycle(lev + 1, rc - Ae0, np.zeros(len(C)), work)
         z = e0 - d[0]
         out = xk + h
         out[C] += L.PpC @ z

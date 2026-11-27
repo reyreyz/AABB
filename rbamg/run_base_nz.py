@@ -32,13 +32,13 @@ def run(A, b, **kw):
                 oc=c.op_complexity(), sc=c.stored_complexity(), ts=ts)
 
 
-CONFIGS = [  # label, kwargs
+CONFIGS = [  # label, kwargs   (refinement on levels 0-3 as in Algorithm 7.3)
     ("M", dict(markov=True, k=4, delta=0.3)),
-    ("N k=4", dict(zmode="Q0", k=4, delta=0.3)),
-    ("N k=3", dict(zmode="Q0", k=3, delta=0.3)),
-    ("N_Z k=3, Z on level 1, theta auto", dict(k=3, delta=0.3, q=4, z_from=1, z_levels=2, theta="auto")),
-    ("N_Z k=4, Z on level 1, theta auto", dict(k=4, delta=0.3, q=4, z_from=1, z_levels=2, theta="auto")),
-    ("N_Z k=3, Z on levels 1-2, theta auto", dict(k=3, delta=0.3, q=4, z_from=1, z_levels=3, theta="auto")),
+    ("N k=8/12 (Alg. 7.3)", dict(zmode="Q0", k=8, k_coarse=12, delta=0.3, refine_levels=3)),
+    ("N k=4/6, refine", dict(zmode="Q0", k=4, k_coarse=6, delta=0.3, refine_levels=3)),
+    ("N_Z k=4/6, refine, Z on levels 1-2", dict(k=4, k_coarse=6, delta=0.3, q=4, z_from=1, z_levels=3, theta="auto", refine_levels=3)),
+    ("N k=3/4, refine", dict(zmode="Q0", k=3, k_coarse=4, delta=0.3, refine_levels=3)),
+    ("N_Z k=3/4, refine, Z on levels 1-2", dict(k=3, k_coarse=4, delta=0.3, q=4, z_from=1, z_levels=3, theta="auto", refine_levels=3)),
 ]
 
 
