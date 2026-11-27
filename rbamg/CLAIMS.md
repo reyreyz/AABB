@@ -286,3 +286,29 @@ Limits:
 - Multilevel version not achieved: with $k_c=1$, N stagnates (0.96–0.98); with $k_c=2$ it diverges.
 - Earlier attempts that failed: single-entry $\tilde P$ (N drifts to 0.92 at m=255), and the shifted Laplacian with
   injection $R$ (a hit only at m=15).
+
+## Claim 11. Multilevel version of Claim 10 (`ml_missing_final.py`)
+
+**Hierarchy, shared by all three methods** ($R=\tilde P^T$ on every level):
+- Level 0: the Claim 10 setup (Jacobi $\omega_F=1$, $\omega_C=0.8$, $k=1$, $\tilde S$ with 2 entries per row exact on
+  $1,x,y$).
+- Levels ≥ 1: robust N (Jacobi $\omega=1$, $k=8$, $S$ truncated at 1e-5, filter 1e-3, or 3e-4 from level 8, sparse LU
+  below $16\sqrt n$, V-cycle).
+
+| m | n | levels | N: factor / cycles | WU/cycle | WU total | op.cx | twin | Markov-Jacobi |
+|---|---|---|---|---|---|---|---|---|
+| 127 | 16,129 | 5 | 0.551 / 31 | 117 | 3,627 | 4.38 | 1.02, diverges | 6e4, diverges |
+| 255 | 65,025 | 7 | 0.614 / 37 | 167 | 6,192 | 5.52 | 1.15, diverges | 3e6, diverges |
+| 511 | 261,121 | 9 | 0.645 / 41 | 199 | 8,153 | 6.33 | 1.24, diverges | 3e7, diverges |
+| 1023 | 1,046,529 | 12 | 0.696 / 50 | 239 | 11,936 | 7.40 | 1.26, diverges | 2e8, diverges |
+
+**Cost per cycle.** nnz(A_ℓ)/nnz(A) per level, at m=1023: 1.00, 0.80, 0.95, 0.85, 0.74, 0.62, 0.51, 0.42, 0.46, 0.40,
+0.35, 0.30. This decays geometrically (ratio ≈ 0.82–0.87), so the operator complexity and the cost per cycle are
+bounded by a convergent series, i.e. O(n) per cycle. The bound is not yet reached at 1M unknowns: WU per cycle still
+rises 20% from m=511 to 1023, and the series limit is about 9.5 in operator complexity.
+**Convergence.** The factor creeps from 0.55 to 0.70, inherited from the two-level factor (0.56, 0.61, 0.65), so the
+cycle counts grow (31 → 50). Total work is therefore not yet mesh-independent.
+**Two more points.**
+- The coarse levels need the robust settings. Cheap coarse cycles ($k=2$, truncation 1e-2) stall at m ≥ 255, because
+  N's error contains the coarse-cycle defect acting on $c_0$.
+- The family has fixed cell Pe (10), as in §7.3, so the physical Pe grows with $m$.

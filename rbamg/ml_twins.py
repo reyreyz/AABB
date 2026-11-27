@@ -53,7 +53,7 @@ def truncate(S, tau, mode):
 
 class ML:
     def __init__(self, A, omega=1.0, k0=4, k1=4, delta=0.3, tauP=0.0, mode="drop", trunc_from=0,
-                 tau_filter=1e-3, tau_deep=None, shift=0.0, restrict="ppt", omega_c=None, xy=None, nkeep=3, deep_from=8, refine=1, coarsest=None, max_levels=30):
+                 tau_filter=1e-3, tau_deep=None, shift=0.0, restrict="ppt", omega_c=None, xy=None, nkeep=3, lin_levels=99, tauP_deep=None, wc_levels=99, deep_from=8, refine=1, coarsest=None, max_levels=30):
         self.nnz0, self.refine, self.omega, self.shift, self.work = A.nnz, refine, omega, shift, 0.0
         self.restrict, self.omega_c = restrict, omega_c
         nco = coarsest if coarsest else 16 * np.sqrt(A.shape[0])
@@ -77,14 +77,16 @@ class ML:
             for _ in range(L.k - 1):
                 V = (K @ V).tocsr(); S = (S + V).tocsr()
             L.Sex = S                                                # exact sum_{l<k} K^l H
-            if mode == "lin" and lev >= trunc_from:
+            if mode == "lin" and lev >= lin_levels:
+                if tauP_deep: S = drop_rel(S, tauP_deep)
+            elif mode == "lin" and lev >= trunc_from:
                 Bc = np.column_stack([np.ones(len(C)), xy[C]])
                 S = truncate_lin(S, Bc, nkeep)
             elif tauP > 0 and lev >= trunc_from:
                 S = truncate(S, tauP, mode)
             if xy is not None: xy = xy[C]
             L.C, L.F, L.K, L.H, L.S, L.ST = C, F, K, H, S, S.T.tocsr()
-            L.w = np.full(A.shape[0], omega); L.w[C] = omega if omega_c is None else omega_c
+            L.w = np.full(A.shape[0], omega); L.w[C] = omega if (omega_c is None or lev >= wc_levels) else omega_c
             L.AFC, L.AFF = Afc.tocsr(), Aff.tocsr()
             L.APc, L.APf = (Acc + Acf @ S).tocsr(), (Afc + Aff @ S).tocsr()
             tf = tau_deep if (tau_deep and lev + 1 >= deep_from) else tau_filter
