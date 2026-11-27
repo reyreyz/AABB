@@ -200,3 +200,33 @@ How the three methods treat the divergence:
   coarse solve.
 - N with $j=0$, like the twin, removes both.
 The truncation defect of Claim 7 also acts on the amplified $c_k$, which is why N fails under truncation at Pe 20.
+
+## Claim 8. Convergence: N with the same smoother is never less robust than the Markovian cycle (`conv_compare.py`)
+
+Two-grid, same $T$, same $P'$, $R=P'^T$: $E_N=(I-\Pi)Q_0K^kQ_0^T$ and $E_M=(I-\Pi)T^k$. For injection,
+$K=T_{ff}$ is a principal submatrix of $T$, so in the 1-, 2- and ∞-norms
+$$\|E_N\|\le\|I-\Pi\|\,\|K\|^k\le\|I-\Pi\|\,\|T\|^k ,$$
+while the best norm bound available for M is $\|I-\Pi\|\,\|T\|^k$. With Jacobi and the greedy split,
+$\|K\|_\infty\le\delta$ for any $A$, so N's bound decays like $\delta^k$ whatever $\rho(T)$ is. If $\rho(T)>1$, then
+$E_M$ grows like $\rho(T)^k$ unless the unstable modes lie in the kernel of $I-\Pi$.
+
+Sweep (m=15): 432 cases, from 12 problems (Poisson, anisotropic, recirc centered Pe 2/20/100, constant-flow upwind
+Pe 2/20/100) × 3 smoothers (Jacobi 2/3, Jacobi 1, Gauss–Seidel) × 6 splits (greedy δ=0.3/0.6/0.9, red-black, full,
+aggressive) × $k=1,2,4$:
+
+| outcome | cases |
+|---|---|
+| both converge | 324 |
+| only N converges | 48 (all recirc Pe 20/100 with Jacobi) |
+| only M converges | **0** |
+| neither | 60 (Gauss–Seidel on centered Pe 20/100; Jacobi with non-greedy splits) |
+
+When both converge, $\rho(E_N)\le\rho(E_M)$ in 242 of 324 cases, with median ratio 0.83. The largest advantage for M
+is a factor of 1.20 (Pe 2, Jacobi 2/3, $k=1$). N's largest advantage is several orders of magnitude (Poisson,
+Jacobi 1, red-black: 0 vs 0.96). The multilevel runs (Claims 7 and 7c) also contain no case where Markov-Jacobi
+converges and N does not, provided the coarse unknown is the step-0 error.
+Caveats:
+- This compares N with Markovian cycles on the **same** smoother. The twin, which uses a modified smoother, converges
+  exactly when N does (Claim 1).
+- N's guarantee needs a split that controls $K$ for the smoother actually used. The greedy split does this for
+  Jacobi, not for Gauss–Seidel (the 36 "neither" Gauss–Seidel cases).
