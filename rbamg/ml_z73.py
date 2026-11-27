@@ -98,13 +98,14 @@ class Alg73Z:
                  theta=1.0, thetas=(0.0, 0.25, 0.5, 0.75, 1.0), pc_mask=None,
                  zpattern="dist2", z_from=0, refine_levels=-1,
                  tau_deep=None, deep_from=8, cap_from=1, tauP=0.0, tauP_from=1, cap_lump=True, n_refine=1,
-                 coarsest=None):
+                 coarsest=None, restrict="inj"):
         self.k, self.markov = k, markov
         self.nnz0 = A.nnz
         self.levels = []
         A = sp.csr_matrix(A)
         t = time.time()
         self.coarse, self.coarse_cycles = coarse, coarse_cycles
+        self.restrict = restrict      # 'inj': R = [I 0];  'ppt': R = P'^T (Galerkin with P')
         self.refine_levels = refine_levels      # Alg. 7.3: refinement steps on levels <= this
         self.n_refine = n_refine
         while True:
@@ -190,7 +191,15 @@ class Alg73Z:
             PpF = S
             if markov:
                 PpC, PpF = sp.eye(len(C), format="csr"), sp.csr_matrix((len(F), len(C)))
-            Asig = (Acc @ PpC + Acf @ PpF).tocsr()           # (A P')_C, exact
+            if restrict == "ppt":
+                # R = P'^T:  A_sigma = P'^T A P' = PpC^T (A P')_C + PpF^T (A P')_F
+                AFF, AFC = A[F][:, F].tocsr(), A[F][:, C].tocsr()
+                APc = (Acc @ PpC + Acf @ PpF).tocsr()
+                APf = (AFC @ PpC + AFF @ PpF).tocsr()
+                Asig = (PpC.T @ APc + PpF.T @ APf).tocsr()
+                L.AFF, L.AFC = AFF, AFC
+            else:
+                Asig = (Acc @ PpC + Acf @ PpF).tocsr()       # (A P')_C, exact
             L.C, L.F, L.Z, L.KZ, L.H, L.PpC, L.PpF = C, F, Z, KZ, H, PpC, PpF
             L.Acc, L.Acf, L.Asig, L.D = Acc, Acf, Asig, A.diagonal()
             tau_l = tau_deep if (tau_deep is not None and lev + 1 >= deep_from) else tauA
@@ -211,6 +220,20 @@ class Alg73Z:
             if hasattr(L, "Z"):
                 tot += L.Z.nnz + L.KZ.nnz + L.H.nnz + L.PpC.nnz + L.PpF.nnz + L.Asig.nnz
         return tot / self.nnz0
+
+    def _R(self, L, r):
+        if self.restrict == "ppt":
+            return r[L.C] @ L.PpC + r[L.F] @ L.PpF if False else L.PpC.T @ r[L.C] + L.PpF.T @ r[L.F]
+        return r[L.C]
+
+    def _RAP(self, L, v):
+        """R A P' v, matrix-free and exact"""
+        pc, pf = L.PpC @ v, L.PpF @ v
+        apc = L.Acc @ pc + L.Acf @ pf
+        if self.restrict == "ppt":
+            apf = L.AFC @ pc + L.AFF @ pf
+            return L.PpC.T @ apc + L.PpF.T @ apf
+        return apc
 
     def cycle(self, lev, b, x0, work):
         L = self.levels[lev]
@@ -247,13 +270,15 @@ class Alg73Z:
         h[F] = y
         h[C] = L.Z @ y
         r = b - A @ (xk + h)
-        rc = r[C] + L.Acc @ (L.PpC @ d[0]) + L.Acf @ (L.PpF @ d[0])
+        rc = self._R(L, r) + self._RAP(L, d[0])
+        if self.restrict == "ppt":                       # extra products of R = P'^T
+            work[0] += (2 * (L.PpC.nnz + L.PpF.nnz) + L.AFF.nnz + L.AFC.nnz) / nz
         work[0] += (L.Z.nnz + A.nnz + L.Acc.nnz + L.Acf.nnz + L.PpC.nnz + L.PpF.nnz) / nz
         e0 = self.cycle(lev + 1, rc, np.zeros(len(C)), work)
         if lev <= self.refine_levels and not hasattr(self.levels[lev + 1], "lu"):
             for _ in range(self.n_refine):
                 # refinement: e0 += cycle(r_c - A_sigma e0), A_sigma exact (matrix-free)
-                Ae0 = L.Acc @ (L.PpC @ e0) + L.Acf @ (L.PpF @ e0)
+                Ae0 = self._RAP(L, e0)
                 work[0] += (L.Acc.nnz + L.Acf.nnz + L.PpC.nnz + L.PpF.nnz) / nz
                 e0 = e0 + self.cycle(lev + 1, rc - Ae0, np.zeros(len(C)), work)
         z = e0 - d[0]

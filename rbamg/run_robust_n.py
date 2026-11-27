@@ -17,12 +17,12 @@ B = dict(k=4, k_coarse=8, refine_levels=1, tau_deep=3e-5)
 T = dict(B, tauP=1e-5)
 T3 = dict(T, tau_deep=3e-4)
 T3 = dict(T, tau_deep=3e-4)
+T3 = dict(T, tau_deep=3e-4)
 CONFIGS = [
-    ("bounded base (k=4/8, refine 0-1)", dict(T3)),
-    ("upper filter 3e-4", dict(T3, tauA=3e-4)),
-    ("upper filter 1e-4, deep 3e-4", dict(T3, tauA=1e-4)),
-    ("tauP 1e-6", dict(T3, tauP=1e-6)),
-    ("upper filter 3e-4, tauP 1e-6", dict(T3, tauA=3e-4, tauP=1e-6)),
+    ("injection (bounded base)", dict(T3)),
+    ("R = P'^T", dict(T3, restrict="ppt")),
+    ("R = P'^T, coarsest 16 sqrt(n)", dict(T3, restrict="ppt", coarsest=-16)),
+    ("R = P'^T, no refinement", dict(T3, restrict="ppt", refine_levels=-1)),
 ]
 
 
@@ -38,6 +38,8 @@ def main(ms=(63, 127, 255), only=None):
                 continue
             t = time.time()
             kw = dict(kw)
+            if kw.get('coarsest', 0) and kw['coarsest'] < 0:
+                kw['coarsest'] = int(-kw['coarsest'] * np.sqrt(A.shape[0]))
             c = mzz.Alg73Z(A, zmode="Q0", delta=0.3, **kw)
             ts = time.time() - t
             t = time.time()
