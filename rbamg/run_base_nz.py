@@ -33,14 +33,12 @@ def run(A, b, **kw):
 
 
 CONFIGS = [  # label, kwargs
-    ("N k=4, dc=0.3, tauA=1e-3", dict(zmode="Q0", k=4, delta=0.3)),
-    ("N k=4, dc=0.3, tauA=1e-2", dict(zmode="Q0", k=4, delta=0.3, tauA=1e-2)),
-    ("N_Z k=4, dc=0.3, tauA=1e-2", dict(k=4, delta=0.3, q=4, theta="auto", tauA=1e-2)),
-    ("N_Z k=4, dc=0.3, tauA=1e-2, capP=12", dict(k=4, delta=0.3, q=4, theta="auto", tauA=1e-2, capP=12)),
-    ("N k=4, dc=0.6, tauA=1e-2", dict(zmode="Q0", k=4, delta=0.3, delta_coarse=0.6, tauA=1e-2)),
-    ("N_Z k=4, dc=0.6, tauA=1e-2", dict(k=4, delta=0.3, delta_coarse=0.6, q=4, theta="auto", tauA=1e-2)),
-    ("N_Z k=4, dc=0.6, tauA=3e-2", dict(k=4, delta=0.3, delta_coarse=0.6, q=4, theta="auto", tauA=3e-2)),
-    ("N_Z k=4, dc=0.6, tauA=1e-2, capP=12", dict(k=4, delta=0.3, delta_coarse=0.6, q=4, theta="auto", tauA=1e-2, capP=12)),
+    ("M", dict(markov=True, k=4, delta=0.3)),
+    ("N k=4", dict(zmode="Q0", k=4, delta=0.3)),
+    ("N k=3", dict(zmode="Q0", k=3, delta=0.3)),
+    ("N_Z k=3, Z on level 1, theta auto", dict(k=3, delta=0.3, q=4, z_from=1, z_levels=2, theta="auto")),
+    ("N_Z k=4, Z on level 1, theta auto", dict(k=4, delta=0.3, q=4, z_from=1, z_levels=2, theta="auto")),
+    ("N_Z k=3, Z on levels 1-2, theta auto", dict(k=3, delta=0.3, q=4, z_from=1, z_levels=3, theta="auto")),
 ]
 
 

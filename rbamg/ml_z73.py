@@ -88,7 +88,8 @@ class Alg73Z:
     def __init__(self, A, k=4, delta=1.5, q=4, zmode="Kk", tauA=1e-3, markov=False,
                  kk_iter=100, max_levels=99, capP=None, capA=None,
                  delta_coarse=None, z_levels=99, k_coarse=None, coarse="recursive", coarse_cycles=2,
-                 theta=1.0, thetas=(0.0, 0.25, 0.5, 0.75, 1.0)):
+                 theta=1.0, thetas=(0.0, 0.25, 0.5, 0.75, 1.0), pc_mask=None,
+                 zpattern="dist2", z_from=0):
         self.k, self.markov = k, markov
         self.nnz0 = A.nnz
         self.levels = []
@@ -118,10 +119,16 @@ class Alg73Z:
             K = (sp.eye(len(F)) - Dfi @ Aff).tocsr()
             H = (-Dfi @ Afc).tocsr()
             kl = L.k
-            if zmode == "Q0" or markov or lev >= z_levels:
+            if zmode == "Q0" or markov or lev >= z_levels or lev < z_from:
                 Z = sp.csr_matrix((len(C), len(F)))
             else:
-                patt = bounded_pattern(A, C, F, K, H, q)
+                if zpattern == "acf":
+                    # Z(i, f) only where A_cf(i, f) != 0: pattern(Z S) within pattern(A_cf S),
+                    # i.e. no fill beyond N's coarse operator except through A_cc
+                    patt = abs(Acf).tocsr().astype(float)
+                    patt.data[:] = 1.0
+                else:
+                    patt = bounded_pattern(A, C, F, K, H, q)
                 Z0 = mz.z_ls(K, H, patt)
                 Z = mz.z_kk(K, H, patt, kl, Z0, maxiter=kk_iter) if zmode == "Kk" else Z0
                 Z.eliminate_zeros()
@@ -158,7 +165,14 @@ class Alg73Z:
                 S = (S + V).tocsr()
             if capP:
                 S = cap_rows(S, capP)                       # bounded P' rows
-            PpC = (sp.eye(len(C)) + Z @ S).tocsr()
+            ZS = (Z @ S).tocsr()
+            if pc_mask == "diag":                           # no new fill: A_sigma has N's pattern
+                ZS = sp.diags(ZS.diagonal()).tocsr()
+            elif pc_mask == "acc":                          # pattern of A_cc (one ring of fill)
+                Mk = Acc.copy().tocsr()
+                Mk.data[:] = 1.0
+                ZS = ZS.multiply(Mk).tocsr()
+            PpC = (sp.eye(len(C)) + ZS).tocsr()
             PpF = S
             if markov:
                 PpC, PpF = sp.eye(len(C), format="csr"), sp.csr_matrix((len(F), len(C)))
