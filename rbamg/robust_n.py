@@ -124,6 +124,7 @@ class RobustN:
             APf = (Afc + Aff @ S).tocsr()                                  # (A P')_F
             Asig = (APc + S.T @ APf).tocsr()                               # A_c = P'^T A P'
             L.C, L.F, L.K, L.H, L.S, L.ST = C, F, K, H, S, S.T.tocsr()
+            L.AF_C, L.AF_F = Afc.tocsr(), Aff.tocsr()
             L.APc, L.APf = APc, APf
             tau = tau_deep if lev + 1 >= deep_from else tau_up
             A = filter_lumped(Asig, tau)                                   # next level operator
@@ -131,6 +132,34 @@ class RobustN:
     def RAP(self, L, v):
         """A_c v = P'^T A P' v, exact and matrix-free."""
         return L.APc @ v + L.ST @ (L.APf @ v)
+
+    def f_sweeps(self, L, b, x, nu, work):
+        """nu Jacobi sweeps on the F-points (x_C fixed): x_F <- x_F + D_ff^{-1}(b - A x)_F."""
+        g = b[L.F] - L.AF_C @ x[L.C]
+        for _ in range(nu):
+            x[L.F] += (g - L.AF_F @ x[L.F]) / L.D[L.F]
+        work[0] += (L.AF_C.nnz + nu * L.AF_F.nnz) / self.nnz0
+        return x
+
+    def cycle_markov(self, lev, b, x0, work, nu_pre, nu_post):
+        """Markovian Petrov-Galerkin cycle with the SAME P', R = P'^T, A_c, refinement and LU:
+        F-relaxation, coarse correction x += P' A_c^{-1} R r, F-relaxation (Cor. 4.7 member)."""
+        L = self.levels[lev]
+        if hasattr(L, "lu"):
+            work[0] += L.lu_nnz / self.nnz0
+            return L.lu.solve(b)
+        C, F = L.C, L.F
+        x = self.f_sweeps(L, b, x0.copy(), nu_pre, work)
+        r = b - L.A @ x
+        rc = r[C] + L.ST @ r[F]
+        e = self.cycle_markov(lev + 1, rc, np.zeros(len(C)), work, nu_pre, nu_post)
+        if lev <= self.refine and not hasattr(self.levels[lev + 1], "lu"):
+            e = e + self.cycle_markov(lev + 1, rc - self.RAP(L, e), np.zeros(len(C)), work, nu_pre, nu_post)
+            work[0] += (L.APc.nnz + L.APf.nnz + L.S.nnz) / self.nnz0
+        x[C] += e
+        x[F] += L.S @ e
+        work[0] += (L.A.nnz + 2 * L.S.nnz) / self.nnz0
+        return self.f_sweeps(L, b, x, nu_post, work) if nu_post else x
 
     def cycle(self, lev, b, x0, work):
         L = self.levels[lev]
@@ -161,13 +190,15 @@ class RobustN:
                     + 3 * L.S.nnz + 2 * (L.APc.nnz + L.APf.nnz)) / self.nnz0
         return xh
 
-    def solve(self, b, tol=1e-8, maxcyc=30):
+    def solve(self, b, tol=1e-8, maxcyc=30, markov=None):
+        """markov = (nu_pre, nu_post) runs the Markovian competitor instead of N."""
         A = self.levels[0].A
         x, nb, work, hist = np.zeros(A.shape[0]), np.linalg.norm(b), [0.0], [1.0]
         for _ in range(maxcyc):
-            x = self.cycle(0, b, x, work)
+            x = (self.cycle(0, b, x, work) if markov is None
+                 else self.cycle_markov(0, b, x, work, *markov))
             hist.append(np.linalg.norm(b - A @ x) / nb)
-            if hist[-1] < tol:
+            if hist[-1] < tol or not np.isfinite(hist[-1]) or hist[-1] > 1e10:
                 break
         return x, np.array(hist), work[0]
 
