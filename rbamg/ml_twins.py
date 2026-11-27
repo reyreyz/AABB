@@ -53,7 +53,7 @@ def truncate(S, tau, mode):
 
 class ML:
     def __init__(self, A, omega=1.0, k0=4, k1=4, delta=0.3, tauP=0.0, mode="drop", trunc_from=0,
-                 tau_filter=1e-3, tau_deep=None, shift=0.0, restrict="ppt", omega_c=None, xy=None, nkeep=3, lin_levels=99, tauP_deep=None, wc_levels=99, tv=None, split0=None, theta=None, deep_from=8, refine=1, coarsest=None, max_levels=30):
+                 tau_filter=1e-3, tau_deep=None, shift=0.0, restrict="ppt", omega_c=None, xy=None, nkeep=3, lin_levels=99, tauP_deep=None, wc_levels=99, tv=None, split0=None, theta=None, omega_coarse=None, deep_from=8, refine=1, coarsest=None, max_levels=30):
         self.nnz0, self.refine, self.omega, self.shift, self.work = A.nnz, refine, omega, shift, 0.0
         self.restrict, self.omega_c = restrict, omega_c
         nco = coarsest if coarsest else 16 * np.sqrt(A.shape[0])
@@ -70,7 +70,8 @@ class ML:
             isF = split0 if (split0 is not None and lev == 0) else greedy_f_points(A, delta)
             C, F = np.nonzero(~isF)[0], np.nonzero(isF)[0]
             Acc, Acf, Afc, Aff = A[C][:, C], A[C][:, F], A[F][:, C], A[F][:, F]
-            Dfi = sp.diags(omega / Aff.diagonal())
+            om = omega if (omega_coarse is None or lev == 0) else omega_coarse
+            Dfi = sp.diags(om / Aff.diagonal())
             K = (sp.eye(len(F)) - Dfi @ Aff).tocsr()                 # K = Q^T T Q
             H = (-Dfi @ Afc).tocsr()                                 # H = Q^T T P
             S, V = H.copy(), H.copy()
@@ -91,7 +92,8 @@ class ML:
             if xy is not None: xy = xy[C]
             tv = None
             L.C, L.F, L.K, L.H, L.S, L.ST = C, F, K, H, S, S.T.tocsr()
-            L.w = np.full(A.shape[0], omega); L.w[C] = omega if (omega_c is None or lev >= wc_levels) else omega_c
+            L.w = np.full(A.shape[0], om); L.w[C] = om if (omega_c is None or lev >= wc_levels) else omega_c
+            L.om = om
             L.AFC, L.AFF = Afc.tocsr(), Aff.tocsr()
             L.APc, L.APf = (Acc + Acf @ S).tocsr(), (Afc + Aff @ S).tocsr()
             tf = tau_deep if (tau_deep and lev + 1 >= deep_from) else tau_filter
@@ -115,7 +117,7 @@ class ML:
         if hasattr(L, "lu"):
             self.work += (L.lu.L.nnz + L.lu.U.nnz) / self.nnz0
             return L.lu.solve(b)
-        A, C, F, w = L.A, L.C, L.F, self.omega
+        A, C, F, w = L.A, L.C, L.F, getattr(L, "om", self.omega)
         ap = L.APc.nnz + L.APf.nnz
         self.work += {"twin": L.AFC.nnz + L.k * L.AFF.nnz + A.nnz + 2 * L.S.nnz,
                       "markovJ": (L.k + 1) * A.nnz + 2 * L.S.nnz,

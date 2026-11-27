@@ -1,0 +1,10 @@
+| const | 6 | 0.3 | greedy | 8 | onepoint | 63 | 0.314 | 1.19 | 0.897 |
+| const | 8 | 0.1 | greedy | 16 | onepoint | 63 | 0.577 | 2.08 | 0.634 |
+| const | 8 | 0.05 | greedy | 16 | onepoint | 63 | 0.461 | 1.5 | 1.06 |
+| const | 6 | 0.8 | greedy | 2 | drop0.3 | 63 | 0.063 | 0.056 | 3.38 |
+| recirc | 20 | 1.0 | greedy | 2 | exact | 63 | 1.3e-14 | 1.47e-14 | 21.8 |
+| const | 6 | 0.3 | greedy | 8 | onepoint | 127 | 0.546 | 1.26 | 0.898 |
+| const | 8 | 0.1 | greedy | 16 | onepoint | 127 | 0.602 | 2.31 | 0.658 |
+| const | 8 | 0.05 | greedy | 16 | onepoint | 127 | 0.515 | 1.9 | 1.18 |
+| const | 6 | 0.8 | greedy | 2 | drop0.3 | 127 | 0.0646 | 0.0561 | 3.54 |
+| recirc | 20 | 1.0 | greedy | 2 | exact | 127 | 5.81e-14 | 7.29e-14 | 22.9 |

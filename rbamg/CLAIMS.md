@@ -429,3 +429,59 @@ undamped Jacobi with $\rho(T)\approx4.5$, robust hierarchy), MJF needs only the 
 F-Jacobi step (no smoother restart). It converges exactly like N and more cheaply: m=127: N 2.2e-6, 2 cycles, 646 WU
 vs MJF 2.2e-6, 2 cycles, 445 WU; m=255: N 3.2e-3, 3 cycles, 1359 WU vs MJF 3.2e-3, 3 cycles, 901 WU.
 **Correction to Claim 4:** N is not the only convergent method under the black-box constraint; MJF also is.
+
+## Claim 15. Natural examples, separately: (A) N against the twin, (B) N against plain Markov-Jacobi (`natural_scan.py`, `natural_scanA.py`, `natural_mesh.py`, `natural_ml.py`)
+
+"Natural" means centered convection–diffusion (constant flow, recirculating flow, Poiseuille flow), the **same**
+damped-Jacobi weight ω on all points, a standard split (red-black or greedy δ=0.3), and a standard truncation of $S$
+(one-point: one entry carrying the row sum; drop 0.3; lump 0.5; exact).
+
+From the error formulas (Claim 7 and Claim 14):
+$$E_N=(I-\tilde\Pi)Q\big[(S-\tilde S)c_k+K^kq_0\big],\quad E_{\rm twin}=(I-\tilde\Pi)Q\big[(S-\tilde S)c_0+K^kq_0\big],\quad E_{\rm MJ}=(I-\tilde\Pi)T^k .$$
+- **(A) N converges, twin diverges.** Needs a crude $\tilde S$ (one-point) and a smoother that *damps* the C-error, so
+  that $c_k\ll c_0$. Damped Jacobi inside its stability range, $\omega<2/(1+b^2)$, does this, and then Markov-Jacobi
+  converges too.
+- **(B) N converges, MJ diverges.** Needs a smoother that *amplifies* ($\rho(T)>1$: centered convection at cell Pe ≳ 4
+  with ω ≥ 0.6) and an accurate $\tilde S$. Then N and the twin coincide or nearly so, and both converge.
+
+**Two-level scan** (m=31, dense, `results_natural_scan31.md`, `results_natural_scanA31.md`):
+- Class (B) is everywhere: 200+ configurations, e.g. constant flow Pe 6, ω=0.8, k=2: N 0.04, twin 0.04, MJ 3.1;
+  recirc Pe 20, ω=1: N = twin ≈ 0 (K=0, exact P'), MJ 20–500.
+- Class (A) alone never occurs with ω ≥ 0.6; every twin-divergent case there also has MJ divergent. With damped
+  Jacobi inside its stability range it does occur, e.g. constant flow Pe 8, ω=0.1, k=16, one-point: N 0.56, twin 1.96,
+  MJ 0.43.
+
+**Mesh check, two-level** (`results_natural_mesh.md`):
+
+| case | m=31 | m=63 | m=127 (N / twin / MJ) |
+|---|---|---|---|
+| (A) const Pe 8, ω 0.1, k 16, one-point | 0.56 / 1.96 / 0.43 | 0.577 / 2.08 / 0.634 | 0.602 / 2.31 / 0.658 |
+| (B) const Pe 6, ω 0.8, k 2, drop 0.3 | 0.042 / 0.055 / 3.18 | 0.063 / 0.056 / 3.38 | 0.065 / 0.056 / 3.54 |
+| (B) recirc Pe 20, ω 1, k 2, exact | 0 / 0 / 20.4 | 1e-14 / 1e-14 / 21.8 | 6e-14 / 7e-14 / 22.9 |
+
+**Multilevel** (`natural_ml.py`, `results_natural_ml*.md`):
+
+(A2) constant flow Pe 8, damped Jacobi ω=0.1 and k=16 on **all** levels, greedy, one-point $\tilde S$ on level 0,
+$S$ truncated at 1e-2 below, filter 1e-2:
+
+| m | n | N: factor / cycles | WU/cycle | WU total | op.cx | twin | Markov-Jacobi |
+|---|---|---|---|---|---|---|---|
+| 127 | 16,129 | 0.573 / 33 | 163 | 5,391 | 4.02 | 2.37, diverges | 0.782, 74 cycles, 8,594 WU |
+| 255 | 65,025 | 0.576 / 33 | 184 | 6,065 | 4.29 | 2.38, diverges | 0.821, not converged in 80 cycles |
+| 511 | 261,121 | 0.59 / 35 | 199 | 6,978 | 4.45 | 2.37, diverges | 0.828, not converged in 80 cycles |
+
+With undamped Jacobi on the coarse levels instead (A), MJ diverges as well (18–20), so the example becomes AB.
+
+(B2) constant flow Pe 6, Jacobi ω=0.8 and k=2 on all levels, greedy, $S$ truncated at 0.1, filter 1e-3:
+
+| m | n | N: factor / cycles | WU/cycle | WU total | op.cx | twin | Markov-Jacobi |
+|---|---|---|---|---|---|---|---|
+| 127 | 16,129 | 0.060 / 7 | 56 | 393 | 5.77 | 0.050 / 7 / 163 WU | 3.08, diverges |
+| 255 | 65,025 | 0.066 / 7 | 65 | 454 | 6.64 | 0.076 / 8 / 189 WU | 3.10, diverges |
+| 511 | 261,121 | 0.124 / 9 | 69 | 619 | 6.94 | 0.163 / 11 / 273 WU | 3.10, diverges |
+
+**Caveats (Claim 14).**
+- In (A) the smoother contracts, so the Markovian cycle "k sweeps + F-sweeps" (MJF) ≈ N.
+- In (B) the twin ≈ N and is cheaper.
+
+Each class shows N beating one specific Markovian cycle in a natural setting, not every Markovian cycle.
