@@ -677,3 +677,37 @@ constant flow Pe 20 m=127/255, AIR factor 9.2–9.6).
 - Recirculating flow at Pe 20: S converges in two-level but diverges in this multilevel hierarchy (2.5–21).
 - S's operator complexity is high (12–13.5). The factor creeps mildly (0.06 → 0.13 / 0.07 → 0.17 for m=127 → 511).
 - S's exact Markovian twin needs k+1 coarse solves per cycle (Claim 16).
+
+### Claim 17, addendum: O(n) multilevel S (`semi_on.py`, `semi_on_run.py`, `results_semi_on*.md`)
+
+**Configuration** (parametrized Alg. 7.2):
+- damped Jacobi ω=0.7, k=4 on all levels; greedy split δ=0.3;
+- $\widehat R=[I,\,-A_{cf}(I+G+G^2)D_{ff}^{-1}]$ (L=3); injection $P_0$ plus memory replay;
+- coarse operators $\widehat RAP_0$ filtered at 3e-3 (row-max);
+- **one refinement step on level 0** (two level-1 cycles per fine cycle); sparse LU at 150 unknowns
+  (variant: below $16\sqrt n$).
+
+| problem | m | n | levels | S: factor / cycles | WU/cycle | WU total | op.cx | M (same operators) |
+|---|---|---|---|---|---|---|---|---|
+| constant flow Pe 20 | 127 | 16,129 | 14 | 0.012 / 5 | 215 | 1,074 | 10.97 | diverges (241) |
+| | 255 | 65,025 | 17 | 0.012 / 5 | 233 | 1,167 | 11.58 | |
+| | 511 | 261,121 | 20 | 0.023 / 5 | 244 | 1,221 | 11.88 | |
+| | 1023 | 1,046,529 | 22 | 0.029 / 6 | 231 | 1,388 | 11.58 | |
+| shear Pe 20 | 127 | 16,129 | 13 | 0.010 / 5 | 200 | 998 | 9.49 | diverges (124) |
+| | 255 | 65,025 | 16 | 0.014 / 5 | 214 | 1,071 | 9.78 | diverges (130) |
+| | 511 | 261,121 | 18 | 0.027 / 5 | 221 | 1,107 | 9.97 | diverges (133) |
+| | 1023 | 1,046,529 | 20 | 0.048 / 7 | 227 | 1,589 | 10.11 | |
+
+LU below $16\sqrt n$ gives the same picture: constant flow 0.009 / 0.010 / 0.015 / 0.027 at 166 / 206 / 230 / 226
+WU/cycle; shear 0.009 / 0.013 / 0.025 / 0.047 at 158 / 193 / 211 / 222 WU/cycle.
+
+- **Cost per cycle is bounded:** 215–244 WU (constant flow) and 200–227 WU (shear) from 16k to 1M unknowns, with
+  operator complexity 9.5–11.9 and no growth trend between m=511 and 1023.
+- **Cycles to 1e-8:** 5–7 at every size (factor ≤ 0.05).
+
+So S is O(n) up to 1M unknowns, while M diverges and M' (= S without shift) diverges already in two-level.
+**What the tuning showed.**
+- Without refinement the factor creeps (0.06 → 0.14 at m=511).
+- The short restriction L=1 makes S diverge in multilevel: the coarse operator must approximate the Schur complement.
+- Faster coarsening on the coarse levels (δ 0.45–0.6) breaks convergence.
+- Refinement on levels 0–1 gives 0.01–0.017 but costs about 450 WU/cycle.
