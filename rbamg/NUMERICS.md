@@ -7,7 +7,10 @@ The three examples below each isolate one mechanism of the theory.
 2. **Semi-Markovian S.** Memory enters only the interpolation of the coarse correction. Without the history shift,
    S reduces exactly to M', and M' diverges.
 3. **True N.** The smoother moves the C-values, so the history is non-zero, and it enters both the coarse
-   right-hand side and the interpolation.
+   right-hand side and the interpolation. Two cases:
+   - (3a) truncated interpolation, O(n) up to $10^6$ unknowns;
+   - (3b) the robust-N recirculating problem, where every Markovian cycle built on the given smoother and every
+     standard AMG diverges.
 
 Each example is compared with Markovian cycles that use the same smoother and hierarchy, and with PyAMG.
 
@@ -84,6 +87,14 @@ $$E_{\rm twin}=(I-\tilde\Pi)\big[\tilde PP^\sharp+Q(S_k-\tilde S)P^\sharp+QK^kQ^
 
 **Identity (simplest Markovian rewrite).** With MJF = k sweeps of $T$, k F-sweeps, then correction:
 $E_N-E_{\rm MJF}=(I-\tilde\Pi)QK^kQ^\sharp(I-T^k)$. This is zero when $K=0$.
+- With $K=0$ (red-black split, $\omega_F=1$, Example 3a), one F-sweep suffices and N ≡ MJF in two-level.
+- With $K\neq0$ and a strongly amplifying $T$ (Example 3b), the term $K^kQ^\sharp T^k$ grows like
+  $(\rho(K)\rho(T))^k$. In multilevel, MJF's coarse defect also acts on the amplified $c_k$, while N's acts on $c_0$
+  (step-0 coarse unknown). MJF then fails.
+
+**Example 3b, untruncated level 0.** With $\tilde S=S_k$ the truncation term vanishes, so $E_N=E_{\rm twin}$: N and its
+twin coincide, but the twin replaces the given Jacobi smoother by F-relaxation. With the given smoother, the
+Markovian cycles MJ and MJF carry $T^k$ with $\rho(T)\approx4.5$.
 
 ---
 
@@ -127,7 +138,7 @@ Cycle:
 
 M is the same hierarchy with $x_C\mathrel{+}=e$ only. M' uses $P'$ statically.
 
-### Algorithm C (Example 3): non-Markovian V-cycle with truncated interpolation
+### Algorithm C (Example 3a): non-Markovian V-cycle with truncated interpolation
 
 **Level 0:**
 - red-black split (F = red), so $K=0$ and $S_k=H$;
@@ -145,6 +156,20 @@ below $16\sqrt n$.
 4. $e=$ cycle$(r_c)$; $x\leftarrow x^{(k)}+h+\tilde P(e-d^{(0)})$.
 
 The twin is the same hierarchy with k F-sweeps. MJ uses k Jacobi sweeps. MJF uses k Jacobi sweeps plus one F-sweep.
+
+### Algorithm D (Example 3b): robust N (Alg. 7.3, `robust_n.py`)
+
+Setup per level:
+1. greedy F-points ($\|I-D_{ff}^{-1}A_{ff}\|_\infty\le0.3$);
+2. Jacobi ω=1, k=4 on level 0 and k=8 below; $K=I-D_{ff}^{-1}A_{ff}$, $H=-D_{ff}^{-1}A_{fc}$;
+3. $S=\sum_{\ell<k}K^\ell H$, exact on level 0 and truncated at $10^{-5}$ below; $P'=[I;S]$;
+4. $\widehat R=P'^T$ and $A_c=P'^TAP'$, filtered (lumped, $10^{-3}$ on levels < 8, $3\cdot10^{-4}$ below);
+5. one refinement step on levels 0–1; sparse LU below $16\sqrt n$.
+
+The cycle is the same as Algorithm C, with $h=Q_0y$ and correction $P'(e-d^{(0)})$. On the same hierarchy:
+- the twin uses k F-sweeps;
+- MJ uses k Jacobi sweeps;
+- MJF uses k Jacobi sweeps plus 1 F-sweep, and MJF$_k$ k Jacobi sweeps plus k F-sweeps.
 
 ---
 
@@ -218,17 +243,17 @@ $\rho(T)\approx5$–$6$. Algorithm B.
 S converges in 4–7 cycles with bounded work per cycle (147–198 WU) and operator complexity (6.4–8.6) up to $10^6$
 unknowns.
 
-### 3.3 Example 3: true N (constant flow, cell Pe 6)
+### 3.3 Example 3a: true N with truncated interpolation (constant flow, cell Pe 6)
 
 Problem: centered convection–diffusion, $b=(\cos0.4,\sin0.4)$, cell Pe 6. Jacobi with ω=1 has $\rho(T)=1.6$.
 Algorithm C.
 
-| m | n | levels | N: factor / cycles | WU/cycle | WU total | op.cx | twin | MJ | MJF: WU total |
+| m | n | levels | N: factor / cycles | WU/cycle | WU total | op.cx | twin | MJ | MJF: factor / cycles / WU |
 |---|---|---|---|---|---|---|---|---|---|
-| 127 | 16,129 | 6 | 0.365 / 19 | 44 | 840 | 4.16 | diverges (1.36) | diverges (2.06) | 666 |
-| 255 | 65,025 | 7 | 0.364 / 19 | 49 | 925 | 4.48 | diverges (1.40) | diverges (2.07) | 709 |
-| 511 | 261,121 | 9 | 0.363 / 19 | 53 | 1,013 | 4.82 | diverges (1.39) | diverges (2.07) | 758 |
-| 1023 | 1,046,529 | 10 | 0.362 / 19 | 55 | 1,053 | 4.93 | diverges (1.38) | diverges (2.07) | 783 |
+| 127 | 16,129 | 6 | 0.365 / 19 | 44 | 840 | 4.16 | diverges (1.36) | diverges (2.06) | 0.365 / 19 / 584 |
+| 255 | 65,025 | 7 | 0.364 / 19 | 49 | 925 | 4.48 | diverges (1.40) | diverges (2.07) | 0.364 / 19 / 617 |
+| 511 | 261,121 | 9 | 0.363 / 19 | 53 | 1,013 | 4.82 | diverges (1.39) | diverges (2.07) | 0.363 / 19 / 655 |
+| 1023 | 1,046,529 | 10 | 0.362 / 19 | 55 | 1,053 | 4.93 | diverges (1.38) | diverges (2.07) | 0.363 / 19 / 676 |
 
 Two-level spectral radii ($\rho(E_N)$ / twin / MJ): 0.403 / 1.21 / 1.76 (m=63), 0.407 / 1.35 / 2.03 (m=127),
 0.406 / 1.39 / 1.81 (m=255).
@@ -239,17 +264,45 @@ Two-level spectral radii ($\rho(E_N)$ / twin / MJ): 0.403 / 1.21 / 1.76 (m=63), 
   carries $T^k$).
 
 **Remarks.**
-- Because $K=0$ on level 0, MJF reproduces N exactly (same factor and cycles) and costs 20–26% less (identity of
-  §1.3). The history can be replaced by one extra F-sweep.
+- Because $K=0$ on level 0, MJF reproduces N (same factor and cycles) and costs 30–36% less (identity of §1.3).
+  Here the history can be replaced by one extra F-sweep.
 - PyAMG AIR solves this problem in 14 cycles (132 WU at m=127/255); RS fails.
 
-Example 3 therefore shows that N converges in O(n) where its own twin and the same-smoother Markovian cycle diverge.
-It does not show N beating all Markovian methods.
+Example 3a therefore shows that N converges in O(n) where its own twin and the same-smoother Markovian cycle
+diverge. It does not show N beating all Markovian methods.
 
-### 3.4 Summary
+### 3.4 Example 3b: robust N (recirculating flow, cell Pe 20)
+
+Problem: centered convection–diffusion with $b=(2y(1-x^2),\,-2x(1-y^2))$, cell Pe 20. Undamped Jacobi has
+$\rho(T)\approx4.5$; with the greedy split, $\rho(K)\approx0.23$. Algorithm D.
+
+| m | n | levels | N: factor / cycles | WU/cycle | WU total | op.cx | twin: WU | MJF$_k$ | MJF | MJ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 63 | 3,969 | 4 | 2.6e-6 / 2 | 173 | 345 | 4.23 | 118 | 6.6e-5 / 3 / 337 WU | | diverges (3e9) |
+| 127 | 16,129 | 6 | 2.2e-6 / 2 | 392 | 785 | 6.33 | 185 | 3.2e-3 / 4 / 889 WU | diverges (3.5e5) | diverges (8.4e9) |
+| 255 | 65,025 | 8 | 3.2e-3 / 3 | 563 | 1,688 | 7.76 | 338 | diverges (33) | diverges (2.3e8) | diverges (1.1e12) |
+| 511 | 261,121 | 11 | 3.2e-3 / 3 | 709 | 2,128 | 9.40 | 365 | diverges (1.9) | diverges (1.7e7) | diverges (2.5e12) |
+| 1023 | 1,046,529 | | 3.7e-3 / 4 | | | | | | | |
+
+The m=1023 row comes from the development code (`ml_z73.py`, same configuration); its work was not recorded. The twin
+converges with the same factor and cycle count as N at every size.
+
+- **N** converges in 2–4 cycles with a mesh-independent factor (≤ 3.7e-3) up to $10^6$ unknowns. Its cost per cycle
+  grows with the operator complexity (4.2 → 9.4).
+- **Markovian cycles built on the given smoother** all diverge: MJ (one cycle multiplies the error by
+  $10^{9}$–$10^{12}$), MJF with one F-sweep, and MJF$_k$ from m=255 on.
+- **PyAMG** AIR (factor 5.7–6.3) and RS fail at m=127–511, also as GMRES preconditioners (`results_compare_markov.md`).
+- **The twin** converges with the same factor and is 4–6× cheaper, because it replaces the smoother by
+  F-relaxation, which is the mechanism of Example 1.
+
+Example 3b therefore shows N converging, mesh-independently, on iterates of a strongly divergent smoother where no
+Markovian cycle using that smoother converges. Its cheapest equivalent is Example 1's Markovian twin.
+
+### 3.5 Summary
 
 | example | memory used at solve time | Markovian cycles on the same smoother and hierarchy | equivalent Markovian cycle | PyAMG |
 |---|---|---|---|---|
 | 1. twin (N with injections) | none (history vanishes) | M (direct): 2.7–8.3× more work, fails at large m | is itself Markovian (M') | 5.6–13.7× more work |
 | 2. S | shift in the interpolation | M, M' (= S without shift), M(ideal) diverge | needs k+1 coarse solves per cycle | AIR, RS fail |
-| 3. true N | history in coarse rhs and interpolation | twin, MJ diverge | MJF (one F-sweep), 20–26% cheaper | AIR converges (132 WU) |
+| 3a. true N, truncated | history in coarse rhs and interpolation | twin, MJ diverge | MJF (one F-sweep, K = 0), 30–36% cheaper | AIR converges (132 WU) |
+| 3b. true N, robust N | history in coarse rhs and interpolation | MJ, MJF, MJF$_k$ diverge | twin (F-relaxation instead of the given smoother), 4–6× cheaper | AIR, RS fail |
