@@ -1,0 +1,403 @@
+% Numerical examples section.  Requires: amsmath, amssymb, booktabs, graphicx, algorithm, algpseudocode.
+\providecommand{\Ps}{P^{\sharp}}
+\providecommand{\Qs}{Q^{\sharp}}
+\providecommand{\Rh}{\widehat R}
+\providecommand{\Pt}{\tilde P}
+\providecommand{\St}{\tilde S}
+\providecommand{\WU}{\ensuremath{\mathrm{WU}}}
+\providecommand{\opcx}{\ensuremath{\mathrm{op.cx}}}
+
+\section{Numerical examples}\label{sec:numerics}
+
+The examples below each isolate one mechanism of the theory.
+\begin{enumerate}
+  \item \textbf{The Markovian twin of N} (Section~\ref{sec:num-twin}). With injections for all operators and
+    F-relaxation, the history terms of N vanish identically. N becomes a Markovian cycle M$'$ whose interpolation
+    is built by relaxation.
+  \item \textbf{Semi-Markovian S} (Section~\ref{sec:num-semi}). Memory enters only the interpolation of the coarse
+    correction. Without the history shift, S reduces exactly to M$'$, and M$'$ diverges.
+  \item \textbf{True N} (Section~\ref{sec:num-trueN}). The smoother moves the C-values, so the history is non-zero,
+    and it enters both the coarse right-hand side and the interpolation. Two cases:
+    \begin{itemize}
+      \item (3a) truncated interpolation, $O(n)$ up to $10^6$ unknowns;
+      \item (3b) the robust-N recirculating problem, where every Markovian cycle built on the given smoother and
+        every standard AMG diverges.
+    \end{itemize}
+\end{enumerate}
+Each example is compared with Markovian cycles that use the same smoother and hierarchy, and with PyAMG.
+
+\paragraph{Work and stopping rules.}
+\begin{itemize}
+  \item One work unit (WU) is one product with the finest matrix. Every sparse product, including the coarsest LU
+    solve, is charged with its number of nonzeros. The operator complexity is
+    $\opcx=\sum_\ell \mathrm{nnz}(A_\ell)/\mathrm{nnz}(A_0)$.
+  \item Example~1 follows the tutorial protocol: $b=Ax_{\mathrm{rand}}$, $x^{(0)}=0$, stop at relative residual
+    $10^{-10}$, at most 300 cycles.
+  \item Examples~2 and~3 use a random right-hand side, $x^{(0)}=0$, stop at $10^{-8}$, at most 60--80 cycles.
+  \item ``Diverges'' means the residual grows; the number in brackets is the asymptotic growth factor per cycle.
+\end{itemize}
+
+%=====================================================================================================================
+\subsection{Mathematical forms}\label{sec:num-forms}
+
+\paragraph{Notation.}
+\begin{itemize}
+  \item Splitting $B=[P\;Q]$ with $B^{-1}=[\Ps;\Qs]$. Relaxation $T=I-MA$.
+  \item CR propagator $K=\Qs TQ$ and coupling $H=\Qs TP$; memory sum $S_k=\sum_{\ell<k}K^\ell H$.
+  \item Effective interpolation $P'=P+QS_k$. Coarse correction $\Pi(X)=X(\Rh AX)^{-1}\Rh A$.
+  \item In C/F ordering, injection is $P_0=[I;0]$, $Q_0=[0;I]$, $[I\;0]$, $[0\;I]$.
+\end{itemize}
+
+\subsubsection{Example 1: N with injections and F-relaxation is its own Markovian twin}\label{sec:form-twin}
+
+\paragraph{Operators.}
+\begin{itemize}
+  \item $P=[I;W_0]$, $Q=Q_0$, $\Ps=[I\;0]$, $\Qs=[-W_0\;I]$, $\Rh=[I\;0]$. The choice $W_0=0$ makes every operator
+    an injection.
+  \item F-relaxation $M=Q_0D_{ff}^{-1}Q_0^T$, so $T_F=I-Q_0D_{ff}^{-1}Q_0^TA$.
+\end{itemize}
+
+\paragraph{The history vanishes.}
+F-relaxation never changes the C-values, so $\Ps T_F=\Ps$ and $d^{(\ell)}=\Ps(x^{(k)}-x^{(\ell)})=0$. The history
+$y$, the shift $A_cd^{(0)}$ and the correction shift all vanish, and Algorithm~4.2 reduces to the Markovian update
+\begin{equation}\label{eq:twin-update}
+  x^{\mathrm{new}}=x^{(k)}+P'\bigl(\Rh AP'\bigr)^{-1}\Rh\, r(x^{(k)}),\qquad
+  E_N=\bigl(I-\Pi(P')\bigr)T_F^k=\bigl(I-\Pi(P')\bigr)Q_0K^k\Qs .
+\end{equation}
+
+\paragraph{The interpolation is $k$ relaxation sweeps on $W$.}
+With $K=I-D_{ff}^{-1}A_{ff}$ and $H_0=-D_{ff}^{-1}A_{fc}$,
+\begin{equation}\label{eq:twin-W}
+  P'=\begin{bmatrix} I\\ W_k\end{bmatrix},\qquad
+  W_{j+1}=KW_j+H_0=W_j-D_{ff}^{-1}\bigl(A_{ff}W_j+A_{fc}\bigr),\qquad
+  W_k=K^kW_0+\sum_{\ell<k}K^\ell H_0 .
+\end{equation}
+As $k\to\infty$, $W_k\to-A_{ff}^{-1}A_{fc}$ (ideal interpolation), and $\Rh AP'=A_{cc}+A_{cf}W_k$ approaches the
+Schur complement.
+
+\paragraph{Markovian reference M.} The same cycle with $W=W_0$ (direct interpolation):
+$E^M=\bigl(I-\Pi(P)\bigr)T_F^k$.
+
+\subsubsection{Example 2: semi-Markovian S, memory in the interpolation only}\label{sec:form-semi}
+
+\paragraph{Operators.}
+\begin{itemize}
+  \item Jacobi on all points, $T=I-\omega D^{-1}A$.
+  \item $P=P_0$ (injection).
+  \item $\Rh=\bigl[I\;\;-A_{cf}(I+G+G^2)D_{ff}^{-1}\bigr]$ with $G=I-D_{ff}^{-1}A_{ff}$, giving $\Pi_R=I-\Pi(P_0)$.
+\end{itemize}
+
+\paragraph{S} (Algorithm~4.1/7.2): coarse solve at step $k$, shift
+$\varepsilon_\ell=\varepsilon_k+\Ps(x^{(k)}-x^{(\ell)})$, and Horner replay $z\leftarrow P_0\varepsilon_\ell+\Pi_RTz$.
+Its error operator is
+\begin{equation}\label{eq:ES}
+  E^S=QK^k\Qs=(\Pi_RT\Pi_R)^k=(I-\Pi_RMA)^k\,\Pi_R .
+\end{equation}
+The last form shows that the Markovian equivalent of S needs $k+1$ coarse solves per cycle.
+
+\paragraph{Markovian references} (same $T$ and $\Rh$):
+\[
+  E^M=\Pi_R\,T^k\ \text{(injection)},\qquad E^{M'}=\bigl(I-\Pi(P')\bigr)T^k\ \text{(static memory interpolation)}.
+\]
+
+\paragraph{Identity.} S without the shift ($\varepsilon_\ell=\varepsilon_k$) has error operator
+\[
+  \Bigl(I-\sum_{j=0}^{k}(\Pi_RT)^jP_0(\Rh AP_0)^{-1}\Rh A\Bigr)T^k=E^{M'} .
+\]
+M carries the full $T^k$; S carries only the CR operator $\Pi_RT\Pi_R$, with $\rho(\Pi_RT\Pi_R)=1-\omega$.
+
+\subsubsection{Example 3: true N, history in the coarse right-hand side and the interpolation}\label{sec:form-trueN}
+
+\paragraph{Operators.}
+\begin{itemize}
+  \item Jacobi with weights $\omega_F$ on F-points and $\omega_C$ on C-points, so $\Ps T\neq\Ps$ and
+    $d^{(\ell)}\neq0$.
+  \item $P_0$, $Q_0$ injections; truncated interpolation $\Pt=[I;\St]$; $\Rh=\Pt^T$; $\tilde\Pi=\Pi(\Pt)$.
+\end{itemize}
+
+\paragraph{Error operators} (two-level, exact coarse solve):
+\begin{align}
+  E_N&=(I-\tilde\Pi)\bigl[\Pt\Ps+Q(S_k-\St)\Ps T^k+QK^k\Qs\bigr],\label{eq:EN}\\
+  E_{\mathrm{twin}}&=(I-\tilde\Pi)\bigl[\Pt\Ps+Q(S_k-\St)\Ps+QK^k\Qs\bigr],\qquad
+  E_{\mathrm{MJ}}=(I-\tilde\Pi)T^k .\label{eq:Etwin}
+\end{align}
+\begin{itemize}
+  \item The twin ($k$ F-sweeps) puts the truncation defect on the raw C-error $c_0=\Ps e_0$.
+  \item N puts it on $c_k=\Ps T^ke_0$, which the C-relaxation damps.
+  \item MJ carries $T^k$.
+\end{itemize}
+
+\paragraph{Identity (simplest Markovian rewrite).} With MJF $=$ $k$ sweeps of $T$, $k$ F-sweeps, then correction:
+\begin{equation}\label{eq:MJF}
+  E_N-E_{\mathrm{MJF}}=(I-\tilde\Pi)QK^k\Qs(I-T^k).
+\end{equation}
+This is zero when $K=0$.
+\begin{itemize}
+  \item With $K=0$ (red-black split, $\omega_F=1$, Example~3a), one F-sweep suffices and N $\equiv$ MJF in two-level.
+  \item With $K\neq0$ and a strongly amplifying $T$ (Example~3b), the term $K^k\Qs T^k$ grows like
+    $(\rho(K)\rho(T))^k$. In multilevel, MJF's coarse defect also acts on the amplified $c_k$, while N's acts on
+    $c_0$ (step-0 coarse unknown). MJF then fails.
+\end{itemize}
+
+\paragraph{Example 3b, untruncated level 0.} With $\St=S_k$ the truncation term vanishes, so
+$E_N=E_{\mathrm{twin}}$: N and its twin coincide, but the twin replaces the given Jacobi smoother by F-relaxation.
+With the given smoother, the Markovian cycles MJ and MJF carry $T^k$ with $\rho(T)\approx4.5$.
+
+%=====================================================================================================================
+\subsection{Multilevel algorithms}\label{sec:num-alg}
+
+\begin{algorithm}[t]
+\caption{(Example 1) Relaxation-built interpolation with injection restriction.}\label{alg:twin}
+\begin{algorithmic}[1]
+\Statex \textbf{Setup}, on each level until fewer than 20 unknowns remain:
+\State (optional) filter $A$: drop $a_{ij}$ with $|a_{ij}|<\tau|a_{ii}|$, add the dropped part to the diagonal
+\State classical strength ($\theta$) and Ruge--St\"uben C/F splitting
+\State starting interpolation $W_0$ (one-point or direct)
+\For{$j=1,\dots,d_P$} \State $W\leftarrow W-D_{ff}^{-1}(A_{ff}W+A_{fc})$ \EndFor
+\State injection restriction: $A_c=A_{cc}+A_{cf}W$
+\Statex \textbf{Cycle} on level $\ell$ (sparse LU on the coarsest level):
+\State $\nu$ F-relaxation sweeps
+\State $r_C=b_C-A_{cf}x_F-A_{cc}x_C$
+\State $e=\textsc{Cycle}(r_C)$
+\State $x_C\leftarrow x_C+e$, \quad $x_F\leftarrow x_F+We$
+\end{algorithmic}
+\end{algorithm}
+
+With $d_P=\nu=k$, Algorithm~\ref{alg:twin} is exactly Algorithm~4.2 with all-injection operators
+(Section~\ref{sec:form-twin}). M is the same cycle with $d_P=0$.
+
+\begin{algorithm}[t]
+\caption{(Example 2) Semi-Markovian V-cycle (parametrized Algorithm~7.2).}\label{alg:semi}
+\begin{algorithmic}[1]
+\Statex \textbf{Setup} per level ($\omega=0.9$, $k=2$ on level~0 and $k=4$ below, LU at 150 unknowns):
+\State greedy F-points with $\|I-D_{ff}^{-1}A_{ff}\|_\infty\le0.3$ (on a strength-filtered copy of $A$, filter
+  $0.3$, on coarse levels)
+\State $K=I-\omega D_{ff}^{-1}A_{ff}$, \quad $H=-\omega D_{ff}^{-1}A_{fc}$
+\State $R_f=-A_{cf}(I+G+G^2)D_{ff}^{-1}$, drop entries below $10^{-2}\times$ row maximum
+\State $A_c=A_{cc}+R_fA_{fc}$, filtered (row-max $10^{-2}$, lumped)
+\Statex \textbf{Cycle}:
+\State $x^{(0)},\dots,x^{(k)}$ by Jacobi
+\State $d^{(\ell)}=x^{(k)}_C-x^{(\ell)}_C$; \quad $y\leftarrow Ky+Hd^{(\ell)}$ for $\ell<k$
+\State $r_c=r_C+R_fr_F+A_cd^{(0)}$
+\State $e=\textsc{Cycle}(r_c)$; on level~0 two refinements $e\leftarrow e+\textsc{Cycle}(r_c-A_ce)$
+\State $z=e-d^{(0)}$; \quad $x_C\leftarrow x_C+z$; \quad $x_F\leftarrow x_F+y+\sum_{\ell<k}K^\ell Hz$
+\end{algorithmic}
+\end{algorithm}
+
+M is the same hierarchy with $x_C\leftarrow x_C+e$ only; M$'$ uses $P'$ statically.
+
+\begin{algorithm}[t]
+\caption{(Examples 3a and 3b) Non-Markovian V-cycle (Algorithm~7.3 family).}\label{alg:trueN}
+\begin{algorithmic}[1]
+\Statex \textbf{Setup, Example 3a.} Level~0: red-black split (so $K=0$, $S_k=H$); Jacobi $\omega_F=1$,
+  $\omega_C=0.2$, $k=2$; one-point $\St$ (the largest entry of each row of $S$, carrying the full row sum);
+  $\Rh=\Pt^T$, $A_c=\Pt^TA\Pt$. Coarse levels: greedy split ($\delta=0.3$), Jacobi $\omega=1$, $k=2$, $S$ truncated
+  at $10^{-2}$, $A_c$ filtered at $10^{-2}$; LU below $16\sqrt n$.
+\Statex \textbf{Setup, Example 3b} (robust N): greedy split ($\delta=0.3$); Jacobi $\omega=1$, $k=4$ on level~0 and
+  $k=8$ below; $S$ exact on level~0 and truncated at $10^{-5}$ below; $\Rh=P'^T$, $A_c=P'^TAP'$ filtered (lumped,
+  $10^{-3}$ on levels $<8$, $3\cdot10^{-4}$ below); one refinement on levels 0--1; LU below $16\sqrt n$.
+\Statex \textbf{Cycle}:
+\State $x^{(0)},\dots,x^{(k)}$ by Jacobi
+\State $d^{(\ell)}=x^{(k)}_C-x^{(\ell)}_C$; \quad $y\leftarrow Ky+Hd^{(\ell)}$ for $\ell<k$; \quad $h=Q_0y$
+\State $r_c=\Rh\, r(x^{(k)}+h)+A_cd^{(0)}$
+\State $e=\textsc{Cycle}(r_c)$ (plus refinement where configured)
+\State $x\leftarrow x^{(k)}+h+\Pt\,(e-d^{(0)})$
+\end{algorithmic}
+\end{algorithm}
+
+On the same hierarchy:
+\begin{itemize}
+  \item the twin uses $k$ F-sweeps;
+  \item MJ uses $k$ Jacobi sweeps;
+  \item MJF uses $k$ Jacobi sweeps plus one F-sweep, and MJF$_k$ $k$ Jacobi sweeps plus $k$ F-sweeps.
+\end{itemize}
+
+%=====================================================================================================================
+\subsection{Numerical results}\label{sec:num-results}
+
+\subsubsection{Example 1: the Markovian twin (upwind transport)}\label{sec:num-twin}
+
+\paragraph{Problems.}
+\begin{itemize}
+  \item stagnation, $b=(x,-y)$, $\varepsilon=0$;
+  \item curved, $b=(1+y/2,\tfrac12\sin\pi x)$, $\varepsilon=0$;
+  \item jump, $b=(\operatorname{sign}y,0.3)$, $\varepsilon=10^{-6}$.
+\end{itemize}
+All are first-order upwind on $(-1,1)^2$, with $m^2$ unknowns.
+
+\paragraph{Configurations.}
+\begin{itemize}
+  \item \textbf{Twin:} $\theta=0.25$, one-point $W_0$, $d_P=\nu=3$, $\tau=10^{-4}$ for all three problems. With
+    $d_P=\nu$ this is exactly N (Section~\ref{sec:form-twin}).
+  \item \textbf{M:} the best $d_P=0$ configuration (direct $W_0$, $\nu=1$).
+  \item \textbf{PyAMG:} the best of 41 configurations at $m=180$ (AIR for stagnation and jump, RS for curved), used
+    at every size.
+\end{itemize}
+
+\begin{table}[t]
+\centering\small
+\caption{Example 1. Total work in WU / cycles to $10^{-10}$ (and operator complexity for the twin).}\label{tab:twin}
+\begin{tabular}{llrlll}
+\toprule
+problem & $m$ & $n$ & twin ($=$ N): WU / cycles / \opcx & M (direct): WU / cycles & best PyAMG: WU / cycles \\
+\midrule
+stagnation & 90  & 8,100   & \textbf{18.4} / 4 / 3.48 & 51.6 / 24 & 125.8 / 11 \\
+           & 180 & 32,400  & \textbf{19.3} / 4 / 3.72 & 91.0 / 40 & 149.6 / 12 \\
+           & 360 & 129,600 & \textbf{27.0} / 5 / 4.07 & no conv.\ (300) & 185.2 / 14 \\
+           & 720 & 518,400 & \textbf{28.0} / 5 / 4.22 & diverges & 207.5 / 15 \\
+\midrule
+curved     & 90  & 8,100   & \textbf{19.9} / 4 / 3.75 & 57.3 / 27 & 112.1 / 10 \\
+           & 180 & 32,400  & \textbf{21.1} / 4 / 4.09 & 89.9 / 41 & 159.1 / 14 \\
+           & 360 & 129,600 & \textbf{28.2} / 5 / 4.22 & 169.0 / 75 & 243.8 / 21 \\
+           & 720 & 518,400 & \textbf{29.7} / 5 / 4.42 & diverges & 407.5 / 35 \\
+\midrule
+jump       & 90  & 8,100   & \textbf{13.0} / 4 / 2.44 & 35.6 / 20 & 85.5 / 8 \\
+           & 180 & 32,400  & \textbf{13.0} / 4 / 2.60 & 55.7 / 30 & 90.3 / 8 \\
+           & 360 & 129,600 & \textbf{16.2} / 4 / 2.98 & 83.4 / 43 & 105.5 / 9 \\
+           & 720 & 518,400 & \textbf{17.2} / 4 / 3.23 & 142.0 / 72 & 105.9 / 9 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}
+  \item The twin converges in 4--5 cycles at every size, and its total work grows slowly (13.0--29.7\,WU from 8k to
+    518k unknowns; operator complexity 2.4--4.4).
+  \item M with direct interpolation needs 20--75 cycles and 2.7--8.3$\times$ more work where it converges. It fails
+    on the two largest stagnation grids and the largest curved grid. One-point M fails on curved and jump, and
+    needs 133.7\,WU on stagnation at $m=180$.
+  \item Against the best PyAMG configuration the twin is 5.6--13.7$\times$ cheaper. The gap widens with $m$ on
+    curved ($5.6\times\to13.7\times$) and stays around 6--8$\times$ on stagnation and jump.
+\end{itemize}
+
+\subsubsection{Example 2: semi-Markovian S (centered convection, cell P\'eclet 20)}\label{sec:num-semi}
+
+\paragraph{Problems.} Shear flow, $b=(-y,0.3)$, and constant flow, $b=(\cos0.4,\sin0.4)$. Both are centered
+differences with $\varepsilon$ chosen so that the cell P\'eclet number is 20. Jacobi with $\omega=0.9$ has
+$\rho(T)\approx5$--$6$. Algorithm~\ref{alg:semi}.
+
+\begin{table}[t]
+\centering\small
+\caption{Example 2. Semi-Markovian S (Algorithm~\ref{alg:semi}) and the Markovian cycle M on the same hierarchy.}
+\label{tab:semi}
+\begin{tabular}{llrlrrrl}
+\toprule
+problem & $m$ & $n$ & S: factor / cycles & WU/cycle & WU total & \opcx & M (same hierarchy) \\
+\midrule
+constant flow & 127  & 16,129    & 0.010 / 4 & 180 & 722   & 7.95 & \\
+              & 255  & 65,025    & 0.011 / 5 & 190 & 949   & 8.29 & diverges (316) \\
+              & 511  & 261,121   & 0.015 / 5 & 195 & 976   & 8.47 & \\
+              & 1023 & 1,046,529 & 0.036 / 6 & 198 & 1,188 & 8.57 & \\
+\midrule
+shear flow    & 127  & 16,129    & 0.010 / 5 & 147 & 736   & 6.44 & \\
+              & 255  & 65,025    & 0.011 / 5 & 154 & 771   & 6.71 & diverges (156) \\
+              & 511  & 261,121   & 0.017 / 5 & 160 & 799   & 6.87 & \\
+              & 1023 & 1,046,529 & 0.053 / 7 & 161 & 1,126 & 6.92 & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Markovian references.}
+\begin{itemize}
+  \item \textbf{M$'$ $=$ S without shift.} Two-level ($m=31$): it diverges for every $\omega\in[0.02,0.9]$ and
+    $k\in\{2,4,16,64\}$, e.g.\ 161 (shear) and 295 (constant flow) at $\omega=0.7$, $k=4$. S converges at
+    $(1-\omega)^k$.
+  \item \textbf{M$'$ multilevel} (on the $\omega=0.7$, $k=4$ hierarchy of Algorithm~7.2): diverges (241--251 shear,
+    921--953 constant flow, $m=127$--$511$).
+  \item \textbf{M with ideal interpolation} (two-level): diverges (165, 301).
+  \item \textbf{PyAMG AIR and RS:} fail on both problems, stand-alone and as GMRES preconditioners ($m=127$, 255).
+\end{itemize}
+S converges in 4--7 cycles with bounded work per cycle (147--198\,WU) and operator complexity (6.4--8.6) up to $10^6$
+unknowns.
+
+\subsubsection{Example 3: true N}\label{sec:num-trueN}
+
+\paragraph{Example 3a: truncated interpolation (constant flow, cell P\'eclet 6).}
+Centered convection--diffusion, $b=(\cos0.4,\sin0.4)$, cell P\'eclet 6; Jacobi with $\omega=1$ has $\rho(T)=1.6$.
+Algorithm~\ref{alg:trueN}.
+
+\begin{table}[t]
+\centering
+\caption{Example 3a. N, its twin, MJ and MJF on the same hierarchy.}\label{tab:trueN-a}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{rrrlrrrlll}
+\toprule
+$m$ & $n$ & levels & N: factor / cycles & WU/cycle & WU total & \opcx & twin & MJ & MJF: factor / cycles / WU \\
+\midrule
+127  & 16,129    & 6  & 0.365 / 19 & 44 & 840   & 4.16 & diverges (1.36) & diverges (2.06) & 0.365 / 19 / 584 \\
+255  & 65,025    & 7  & 0.364 / 19 & 49 & 925   & 4.48 & diverges (1.40) & diverges (2.07) & 0.364 / 19 / 617 \\
+511  & 261,121   & 9  & 0.363 / 19 & 53 & 1,013 & 4.82 & diverges (1.39) & diverges (2.07) & 0.363 / 19 / 655 \\
+1023 & 1,046,529 & 10 & 0.362 / 19 & 55 & 1,053 & 4.93 & diverges (1.38) & diverges (2.07) & 0.363 / 19 / 676 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Two-level spectral radii ($\rho(E_N)$ / twin / MJ): 0.403 / 1.21 / 1.76 ($m=63$), 0.407 / 1.35 / 2.03 ($m=127$),
+0.406 / 1.39 / 1.81 ($m=255$).
+\begin{itemize}
+  \item N's factor is mesh-independent (0.36) and its cost $O(n)$: 19 cycles, 44--55\,WU per cycle, operator
+    complexity at most 4.9 up to $10^6$ unknowns.
+  \item On the same hierarchy, the twin diverges (its truncation defect acts on the undamped $c_0$) and MJ diverges
+    (it carries $T^k$).
+  \item Because $K=0$ on level~0, MJF reproduces N (same factor and cycles) and costs 30--36\% less, by
+    \eqref{eq:MJF}. Here the history can be replaced by one extra F-sweep.
+  \item PyAMG AIR solves this problem in 14 cycles (132\,WU at $m=127$, 255); RS fails.
+\end{itemize}
+Example~3a therefore shows that N converges in $O(n)$ where its own twin and the same-smoother Markovian cycle
+diverge. It does not show N beating all Markovian methods.
+
+\paragraph{Example 3b: robust N (recirculating flow, cell P\'eclet 20).}
+Centered convection--diffusion with $b=(2y(1-x^2),-2x(1-y^2))$, cell P\'eclet 20. Undamped Jacobi has
+$\rho(T)\approx4.5$; with the greedy split, $\rho(K)\approx0.23$. Algorithm~\ref{alg:trueN}.
+
+\begin{table}[t]
+\centering
+\caption{Example 3b. Robust N and Markovian cycles on the same hierarchy. The $m=1023$ row comes from the development
+code (same configuration); its work was not recorded.}\label{tab:trueN-b}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{rrrlrrrrlll}
+\toprule
+$m$ & $n$ & levels & N: factor / cycles & WU/cycle & WU total & \opcx & twin: WU & MJF$_k$ & MJF & MJ \\
+\midrule
+63   & 3,969     & 4  & 2.6e-6 / 2 & 173 & 345   & 4.23 & 118 & 6.6e-5 / 3 / 337\,WU & & diverges (3e9) \\
+127  & 16,129    & 6  & 2.2e-6 / 2 & 392 & 785   & 6.33 & 185 & 3.2e-3 / 4 / 889\,WU & diverges (3.5e5) & diverges (8.4e9) \\
+255  & 65,025    & 8  & 3.2e-3 / 3 & 563 & 1,688 & 7.76 & 338 & diverges (33) & diverges (2.3e8) & diverges (1.1e12) \\
+511  & 261,121   & 11 & 3.2e-3 / 3 & 709 & 2,128 & 9.40 & 365 & diverges (1.9) & diverges (1.7e7) & diverges (2.5e12) \\
+1023 & 1,046,529 &    & 3.7e-3 / 4 &     &       &      &     & & & \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+The twin converges with the same factor and cycle count as N at every size.
+\begin{itemize}
+  \item \textbf{N} converges in 2--4 cycles with a mesh-independent factor ($\le3.7\cdot10^{-3}$) up to $10^6$
+    unknowns. Its cost per cycle grows with the operator complexity ($4.2\to9.4$).
+  \item \textbf{Markovian cycles built on the given smoother} all diverge: MJ (one cycle multiplies the error by
+    $10^{9}$--$10^{12}$), MJF with one F-sweep, and MJF$_k$ from $m=255$ on.
+  \item \textbf{PyAMG} AIR (factor 5.7--6.3) and RS fail at $m=127$--$511$, also as GMRES preconditioners.
+  \item \textbf{The twin} converges with the same factor and is 4--6$\times$ cheaper, because it replaces the
+    smoother by F-relaxation, which is the mechanism of Example~1.
+\end{itemize}
+Example~3b therefore shows N converging, mesh-independently, on iterates of a strongly divergent smoother where no
+Markovian cycle using that smoother converges. Its cheapest equivalent is Example~1's Markovian twin.
+
+\subsubsection{Summary}\label{sec:num-summary}
+
+\begin{table}[t]
+\centering
+\caption{What each example shows.}\label{tab:summary}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lllll}
+\toprule
+example & memory used at solve time & Markovian cycles, same smoother and hierarchy & equivalent Markovian cycle & PyAMG \\
+\midrule
+1. twin (N with injections) & none (history vanishes) & M (direct): 2.7--8.3$\times$ more work, fails at large $m$
+  & is itself Markovian (M$'$) & 5.6--13.7$\times$ more work \\
+2. S & shift in the interpolation & M, M$'$ ($=$ S without shift), M(ideal) diverge
+  & needs $k+1$ coarse solves per cycle & AIR, RS fail \\
+3a. true N, truncated & history in coarse rhs and interpolation & twin, MJ diverge
+  & MJF (one F-sweep, $K=0$), 30--36\% cheaper & AIR converges (132\,WU) \\
+3b. true N, robust N & history in coarse rhs and interpolation & MJ, MJF, MJF$_k$ diverge
+  & twin (F-relaxation instead of the given smoother), 4--6$\times$ cheaper & AIR, RS fail \\
+\bottomrule
+\end{tabular}}
+\end{table}
