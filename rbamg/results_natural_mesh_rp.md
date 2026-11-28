@@ -17,3 +17,4 @@
 | recirc | 6 | 0.3 | greedy | 16 | lump0.5 | 127 | 0.185 | 1.08 | 0.385 |
 | poiseuille | 8 | 0.1 | rb | 16 | onepoint | 255 | 0.492 | 1.54 | 0.644 |
 | recirc | 10 | 0.1 | greedy | 32 | onepoint | 255 | 0.893 | 3.71 | 0.893 |
+| recirc | 6 | 0.3 | greedy | 16 | lump0.5 | 255 | 0.311 | 1.31 | 0.504 |
