@@ -15,9 +15,10 @@ The three examples below each isolate one mechanism of the theory.
 Each example is compared with Markovian cycles that use the same smoother and hierarchy, and with PyAMG.
 
 **Work and stopping rules.**
+
 - One work unit (WU) is one product with the finest matrix. Every sparse product, including the coarsest LU solve,
   is charged with its number of nonzeros. Operator complexity (op.cx) is $\sum_\ell \mathrm{nnz}(A_\ell)/\mathrm{nnz}(A_0)$.
-- Example 1 follows the tutorial protocol: $b=Ax_{\rm rand}$, $x^{(0)}=0$, stop at relative residual $10^{-10}$, at most
+- Example 1 follows the tutorial protocol: $b=Ax_{\mathrm{rand}}$, $x^{(0)}=0$, stop at relative residual $10^{-10}$, at most
   300 cycles.
 - Examples 2 and 3 use a random right-hand side, $x^{(0)}=0$, stop at $10^{-8}$, at most 60–80 cycles.
 - "Diverges" means the residual grows; the number in brackets is the asymptotic growth factor per cycle.
@@ -27,6 +28,7 @@ Each example is compared with Markovian cycles that use the same smoother and hi
 ## 1. Mathematical forms
 
 **Notation.**
+
 - Splitting $B=[P\;Q]$ with $B^{-1}=[P^\sharp;Q^\sharp]$. Relaxation $T=I-MA$.
 - CR propagator $K=Q^\sharp TQ$ and coupling $H=Q^\sharp TP$; memory sum $S_k=\sum_{\ell<k}K^\ell H$.
 - Effective interpolation $P'=P+QS_k$. Coarse correction $\Pi(X)=X(\widehat RAX)^{-1}\widehat RA$.
@@ -35,6 +37,7 @@ Each example is compared with Markovian cycles that use the same smoother and hi
 ### 1.1 Example 1: N with injections and F-relaxation is its own Markovian twin
 
 **Operators.**
+
 - $P=[I;W_0]$, $Q=Q_0$, $P^\sharp=[I\;0]$, $Q^\sharp=[-W_0\;I]$, $\widehat R=[I\;0]$. The choice $W_0=0$ makes every
   operator an injection.
 - F-relaxation $M=Q_0D_{ff}^{-1}Q_0^T$, so $T_F=I-Q_0D_{ff}^{-1}Q_0^TA$.
@@ -42,7 +45,7 @@ Each example is compared with Markovian cycles that use the same smoother and hi
 **The history vanishes.** F-relaxation never changes the C-values, so $P^\sharp T_F=P^\sharp$ and
 $d^{(\ell)}=P^\sharp(x^{(k)}-x^{(\ell)})=0$. The history $y$, the shift $A_cd^{(0)}$ and the correction shift all vanish,
 and Algorithm 4.2 reduces to the Markovian update
-$$x^{\rm new}=x^{(k)}+P'\big(\widehat RAP'\big)^{-1}\widehat R\,r(x^{(k)}),\qquad
+$$x^{\mathrm{new}}=x^{(k)}+P'\big(\widehat RAP'\big)^{-1}\widehat R\,r(x^{(k)}),\qquad
 E_N=(I-\Pi(P'))\,T_F^k=(I-\Pi(P'))\,Q_0K^kQ^\sharp .$$
 
 **The interpolation is k relaxation sweeps on $W$.** With $K=I-D_{ff}^{-1}A_{ff}$ and $H_0=-D_{ff}^{-1}A_{fc}$,
@@ -56,6 +59,7 @@ Schur complement.
 ### 1.2 Example 2: semi-Markovian S, memory in the interpolation only
 
 **Operators.**
+
 - Jacobi on all points, $T=I-\omega D^{-1}A$.
 - $P=P_0$ (injection).
 - $\widehat R=[I\;\;-A_{cf}(I+G+G^2)D_{ff}^{-1}]$ with $G=I-D_{ff}^{-1}A_{ff}$, giving $\Pi_R=I-\Pi(P_0)$.
@@ -75,24 +79,27 @@ the CR operator $\Pi_RT\Pi_R$, with $\rho(\Pi_RT\Pi_R)=1-\omega$.
 ### 1.3 Example 3: true N, history in the coarse right-hand side and the interpolation
 
 **Operators.**
+
 - Jacobi with weights $\omega_F$ on F-points and $\omega_C$ on C-points, so $P^\sharp T\neq P^\sharp$ and $d^{(\ell)}\neq0$.
 - $P_0$, $Q_0$ injections; truncated interpolation $\tilde P=[I;\tilde S]$; $\widehat R=\tilde P^T$; $\tilde\Pi=\Pi(\tilde P)$.
 
 **Error operators** (two-level, exact coarse solve):
 $$E_N=(I-\tilde\Pi)\big[\tilde PP^\sharp+Q(S_k-\tilde S)P^\sharp T^k+QK^kQ^\sharp\big],$$
-$$E_{\rm twin}=(I-\tilde\Pi)\big[\tilde PP^\sharp+Q(S_k-\tilde S)P^\sharp+QK^kQ^\sharp\big],\qquad E_{\rm MJ}=(I-\tilde\Pi)T^k .$$
+$$E_{\mathrm{twin}}=(I-\tilde\Pi)\big[\tilde PP^\sharp+Q(S_k-\tilde S)P^\sharp+QK^kQ^\sharp\big],\qquad E_{\mathrm{MJ}}=(I-\tilde\Pi)T^k .$$
+
 - The twin (k F-sweeps) puts the truncation defect on the raw C-error $c_0=P^\sharp e_0$.
 - N puts it on $c_k=P^\sharp T^ke_0$, which the C-relaxation damps.
 - MJ carries $T^k$.
 
 **Identity (simplest Markovian rewrite).** With MJF = k sweeps of $T$, k F-sweeps, then correction:
-$E_N-E_{\rm MJF}=(I-\tilde\Pi)QK^kQ^\sharp(I-T^k)$. This is zero when $K=0$.
+$E_N-E_{\mathrm{MJF}}=(I-\tilde\Pi)QK^kQ^\sharp(I-T^k)$. This is zero when $K=0$.
+
 - With $K=0$ (red-black split, $\omega_F=1$, Example 3a), one F-sweep suffices and N ≡ MJF in two-level.
 - With $K\neq0$ and a strongly amplifying $T$ (Example 3b), the term $K^kQ^\sharp T^k$ grows like
   $(\rho(K)\rho(T))^k$. In multilevel, MJF's coarse defect also acts on the amplified $c_k$, while N's acts on $c_0$
   (step-0 coarse unknown). MJF then fails.
 
-**Example 3b, untruncated level 0.** With $\tilde S=S_k$ the truncation term vanishes, so $E_N=E_{\rm twin}$: N and its
+**Example 3b, untruncated level 0.** With $\tilde S=S_k$ the truncation term vanishes, so $E_N=E_{\mathrm{twin}}$: N and its
 twin coincide, but the twin replaces the given Jacobi smoother by F-relaxation. With the given smoother, the
 Markovian cycles MJ and MJF carry $T^k$ with $\rho(T)\approx4.5$.
 
@@ -103,6 +110,7 @@ Markovian cycles MJ and MJF carry $T^k$ with $\rho(T)\approx4.5$.
 ### Algorithm A (Example 1): relaxation-built interpolation with injection restriction
 
 Setup, on each level until fewer than 20 unknowns remain:
+
 1. (optional) filter $A$: drop $a_{ij}$ with $|a_{ij}|<\tau|a_{ii}|$, add the dropped part to the diagonal;
 2. classical strength (θ) and Ruge–Stüben C/F splitting (PyAMG);
 3. starting interpolation $W_0$ (one-point or direct);
@@ -110,6 +118,7 @@ Setup, on each level until fewer than 20 unknowns remain:
 5. injection restriction, $A_c=A_{cc}+A_{cf}W$.
 
 Cycle:
+
 1. $\nu$ F-relaxation sweeps;
 2. $r_C=b_C-A_{cf}x_F-A_{cc}x_C$;
 3. $e=$ cycle$(r_C)$;
@@ -121,6 +130,7 @@ With $d_P=\nu=k$ this is exactly Algorithm 4.2 with all-injection operators (§1
 ### Algorithm B (Example 2): semi-Markovian V-cycle (parametrized Alg. 7.2)
 
 Setup per level:
+
 1. greedy F-points with $\|I-D_{ff}^{-1}A_{ff}\|_\infty\le0.3$, computed on a strength-filtered copy of $A$ (filter 0.3)
    on coarse levels;
 2. $K=I-\omega D_{ff}^{-1}A_{ff}$ and $H=-\omega D_{ff}^{-1}A_{fc}$;
@@ -130,6 +140,7 @@ Setup per level:
 Parameters: ω=0.9, k=2 on level 0 and k=4 below, LU at 150 unknowns.
 
 Cycle:
+
 1. $x^{(0)},\dots,x^{(k)}$ by Jacobi;
 2. $d^{(\ell)}=x^{(k)}_C-x^{(\ell)}_C$, and $y\leftarrow Ky+Hd^{(\ell)}$ for $\ell<k$;
 3. $r_c=r_C+R_fr_F+A_cd^{(0)}$;
@@ -141,6 +152,7 @@ M is the same hierarchy with $x_C\mathrel{+}=e$ only. M' uses $P'$ statically.
 ### Algorithm C (Example 3a): non-Markovian V-cycle with truncated interpolation
 
 **Level 0:**
+
 - red-black split (F = red), so $K=0$ and $S_k=H$;
 - Jacobi with $\omega_F=1$, $\omega_C=0.2$, k=2;
 - one-point $\tilde S$: the largest entry of each row of $S$, carrying the full row sum;
@@ -150,6 +162,7 @@ M is the same hierarchy with $x_C\mathrel{+}=e$ only. M' uses $P'$ statically.
 below $16\sqrt n$.
 
 **Cycle:**
+
 1. $x^{(0)},\dots,x^{(k)}$;
 2. $d^{(\ell)}=x^{(k)}_C-x^{(\ell)}_C$, and $y\leftarrow Ky+Hd^{(\ell)}$ for $\ell<k$; $h=Qy$;
 3. $r_c=\widehat R\,r(x^{(k)}+h)+A_cd^{(0)}$;
@@ -160,6 +173,7 @@ The twin is the same hierarchy with k F-sweeps. MJ uses k Jacobi sweeps. MJF use
 ### Algorithm D (Example 3b): robust N (Alg. 7.3, `robust_n.py`)
 
 Setup per level:
+
 1. greedy F-points ($\|I-D_{ff}^{-1}A_{ff}\|_\infty\le0.3$);
 2. Jacobi ω=1, k=4 on level 0 and k=8 below; $K=I-D_{ff}^{-1}A_{ff}$, $H=-D_{ff}^{-1}A_{fc}$;
 3. $S=\sum_{\ell<k}K^\ell H$, exact on level 0 and truncated at $10^{-5}$ below; $P'=[I;S]$;
@@ -167,6 +181,7 @@ Setup per level:
 5. one refinement step on levels 0–1; sparse LU below $16\sqrt n$.
 
 The cycle is the same as Algorithm C, with $h=Q_0y$ and correction $P'(e-d^{(0)})$. On the same hierarchy:
+
 - the twin uses k F-sweeps;
 - MJ uses k Jacobi sweeps;
 - MJF uses k Jacobi sweeps plus 1 F-sweep, and MJF$_k$ k Jacobi sweeps plus k F-sweeps.
@@ -178,6 +193,7 @@ The cycle is the same as Algorithm C, with $h=Q_0y$ and correction $P'(e-d^{(0)}
 ### 3.1 Example 1: the Markovian twin (upwind transport, ε = 0 / 0 / 10⁻⁶)
 
 Problems:
+
 - stagnation, $b=(x,-y)$;
 - curved, $b=(1+y/2,\ \tfrac12\sin\pi x)$;
 - jump, $b=(\mathrm{sign}\,y,\ 0.3)$.
@@ -185,6 +201,7 @@ Problems:
 All are first-order upwind on $(-1,1)^2$, with $m^2$ unknowns.
 
 Configurations:
+
 - **Twin:** θ=0.25, one-point $W_0$, $d_P=\nu=3$, τ=$10^{-4}$ for all three problems. With $d_P=\nu$ this is exactly N (§1.1).
 - **M:** the best $d_P=0$ configuration (direct $W_0$, ν=1).
 - **PyAMG:** the best of 41 configurations at m=180 (AIR for stagnation and jump, RS for curved), used at every size.
@@ -215,6 +232,7 @@ Configurations:
 ### 3.2 Example 2: semi-Markovian S (centered convection, cell Pe 20)
 
 Problems:
+
 - shear flow, $b=(-y,0.3)$;
 - constant flow, $b=(\cos0.4,\sin0.4)$.
 
@@ -233,6 +251,7 @@ $\rho(T)\approx5$–$6$. Algorithm B.
 | | 1023 | 1,046,529 | 0.053 / 7 | 161 | 1,126 | 6.92 | |
 
 **Markovian references.**
+
 - **M' = S without shift.** Two-level (m=31): it diverges for every ω ∈ [0.02, 0.9] and k ∈ {2, 4, 16, 64}, e.g.
   161 (shear) and 295 (constant flow) at ω=0.7, k=4. S converges at $(1-\omega)^k$.
 - **M' multilevel** (on the ω=0.7, k=4 hierarchy of Alg. 7.2): diverges (241–251 shear, 921–953 constant flow,
@@ -264,6 +283,7 @@ Two-level spectral radii ($\rho(E_N)$ / twin / MJ): 0.403 / 1.21 / 1.76 (m=63), 
   carries $T^k$).
 
 **Remarks.**
+
 - Because $K=0$ on level 0, MJF reproduces N (same factor and cycles) and costs 30–36% less (identity of §1.3).
   Here the history can be replaced by one extra F-sweep.
 - PyAMG AIR solves this problem in 14 cycles (132 WU at m=127/255); RS fails.
