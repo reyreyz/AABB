@@ -744,3 +744,36 @@ So S is O(n) up to 1M unknowns, while M diverges and M' (= S without shift) dive
 - Without the second refinement cycle (`nref=1`) the work is lower at small m (610–641 WU) but the factor creeps to
   0.10–0.14 at m=1023.
 - The remaining creep (0.01 → 0.04–0.05 at 1M unknowns) costs one to two extra cycles.
+
+## Correction (bug in `ml_twins.py`): multilevel MJF results
+
+The `"markovJF"` branch of `ml_twins.ML.cycle` had never been added (the string replacement silently matched
+nothing), so every multilevel run labelled MJF computed **N** (only its work count differed). Fixed in commit
+51b1688; all MJF runs were repeated (`results_mjf_fixed.md`, `results_robust_n_cmp_all.md`). The two-level identity
+of Claim 14 is unaffected: it was checked with independent dense formulas (`dichotomy_check.py`), and the corrected
+`first_order.py` gives N 0.404 / MJF 0.404, N 1.08 / MJF 1.07, N 2.10 / MJF 2.11.
+
+**Corrected multilevel results** (MJF = k Jacobi sweeps + 1 F-sweep; MJF$_k$ = k Jacobi sweeps + k F-sweeps):
+
+| hierarchy | m | N: factor / cycles / WU | MJF | MJF$_k$ |
+|---|---|---|---|---|
+| Claim 13 (red-black, K = 0 on level 0) | 127 | 0.365 / 19 / 840 | 0.365 / 19 / **584** | 0.365 / 19 / 626 |
+| | 255 | 0.364 / 19 / 925 | 0.364 / 19 / **617** | 0.364 / 19 / 667 |
+| | 511 | 0.363 / 19 / 1,013 | 0.363 / 19 / **655** | 0.363 / 19 / 711 |
+| | 1023 | 0.362 / 19 / 1,053 | 0.363 / 19 / **676** | 0.363 / 19 / 734 |
+| Claim 11 (greedy, K ≠ 0, recirc Pe 10, ω_C 0.6) | 127 | **0.301 / 16 / 1,872** | diverges (4e3) | 0.518 / 28 / 2,503 |
+| | 255 | **0.343 / 18 / 3,012** | diverges (9e4) | 0.498 / 26 / 3,216 |
+| Claim 4 / robust N (recirc Pe 20, ω 1, k 4/8) | 127 | **2.2e-6 / 2 / 785** | diverges (3.5e5) | 3.2e-3 / 4 / 889 |
+| | 255 | **3.2e-3 / 3 / 1,688** | diverges (2.3e8) | diverges (33) |
+| | 511 | **3.2e-3 / 3 / 2,128** | diverges (1.7e7) | diverges (1.9) |
+
+**What changes.**
+- **Claim 14, addendum (multilevel):** MJF matches N only on the red-black hierarchy, where $K=0$ (and there it is
+  30–36% cheaper). With $K\neq0$ and an amplifying smoother (Claim 11, robust N), MJF diverges or is slower than N.
+  The term $(I-\tilde\Pi)QK^kQ^\sharp T^k$ and the step-0 coarse unknown (Claim 7c) matter there.
+- **Claim 14, addendum 2 (black box) is withdrawn; Claim 4 stands:** with the given Jacobi smoother, N converges
+  while MJ and MJF (1 or k algebraic F-sweeps) diverge. Only the twin converges, and it replaces the smoother by
+  F-relaxation.
+- **Claims 10, 11, 13 corrections:** the statement "MJF reproduces N exactly and more cheaply" holds for Claim 13
+  (red-black) but **not** for Claim 11, where N is the only one of N / MJ / MJF that converges (MJF$_k$ converges
+  more slowly).

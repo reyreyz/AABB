@@ -248,3 +248,8 @@ Problems:
 ### Stopped by the user
 Random falsification searches stopped on request (final: seed 21 broad, about 12000 samples; seed 31 focused, 500+
 samples; **no persistent or transient hits**). Focus moved to natural examples (Claim 15).
+
+### Correction (later)
+The multilevel MJF results of iterations 9-10 (`results_mjf_ml.md`, `bb_mjf.py`) were produced by a bug: `markovJF`
+fell through to N in `ml_twins.py`. Corrected results are in CLAIMS.md ("Correction (bug in ml_twins.py)"). MJF
+matches N only where K = 0 (red-black); with K ≠ 0 and an amplifying smoother N beats MJF.
