@@ -631,3 +631,49 @@ Pe 6). The divergent relaxation acts on every level, and the coarse levels have 
 - At shear Pe 20, standard AMG (AIR, RS) fails as well.
 - At moderate Pe, a Markovian AMG with a different relaxation (AIR's F/C relaxation) is far cheaper. S's advantage is
   over Markovian cycles on the **same** relaxation.
+
+## Claim 17. The history shift in the interpolation is necessary: S works where no static-interpolation Markovian cycle (M') does (`semi_necessity.py`, `semi_noshift_eq.py`, `semi_ml.py`)
+
+**Schemes** (same damped-Jacobi smoother $T$, same greedy split, same $\widehat R=[I,\,-A_{cf}(I+G+G^2)D_{ff}^{-1}]$):
+- **M(P):** $(I-P(\widehat RAP)^{-1}\widehat RA)\,T^k$ for $P$ = injection, $P'=P_0+Q_0\sum_{\ell<k}K^\ell H$ (**M'**:
+  the memory interpolation made static), or ideal.
+- **S** (Alg. 4.1 / 7.2): $\varepsilon_k=(\widehat RAP_0)^{-1}\widehat Rr^{(k)}$, shift
+  $\varepsilon_\ell=\varepsilon_k+P^\sharp(x^{(k)}-x^{(\ell)})$, Horner replay $z\leftarrow P_0\varepsilon_\ell+\Pi_RTz$.
+  $E^S=(\Pi_RT\Pi_R)^k$.
+- **S without shift:** $\varepsilon_\ell=\varepsilon_k$ for all $\ell$.
+
+**Identity:** $E_{\text{S without shift}}=E_{M'}$, i.e.
+$\big(I-\sum_{j=0}^{k}(\Pi_RT)^jP_0(\widehat RAP_0)^{-1}\widehat RA\big)T^k=(I-P'(\widehat RAP')^{-1}\widehat RA)T^k$
+(verified to 1e-15 for ω 0.05–0.7, k 2–16). **The shift is exactly what separates S from M'.**
+
+**Non-trivial memory:** $\rho(\Pi_RT\Pi_R)=1-\omega$ (not nilpotent), so S converges at $(1-\omega)^k$ and uses all k
+iterates.
+
+**Two-level necessity** (m=31, `results_semi_necessity31.md`, `results_semi_necessity_smallw.md`), cell Pe 20:
+- For shear, constant and recirculating flow, ω ∈ {0.3, 0.5, 0.7, 0.9}, k ∈ {2, 4}: M(injection), M' (= S without
+  shift) and M(ideal) diverge in **all 24 cases** (1.35 to 1,120). S converges in all, ρ = (1-ω)^k (0.49 to 1e-4).
+- Strong damping inside Jacobi's stability range (ω 0.02–0.1, k 4–64, ρ(T) ≈ 1): M' and M(ideal) still diverge in
+  all 27 cases (0.99 to 3,400; one marginal 0.994). Only M(injection) converges, and S is faster at equal k
+  (e.g. ω 0.05, k 64: 0.0375 vs 0.36).
+
+So no damping and no static interpolation (including the one S itself builds) gives a working Markovian cycle on
+these problems.
+
+**Multilevel** (Alg. 7.2 vs M' and M(injection) on their own hierarchies, ω 0.7, k 4; `results_semi_pe20_ml.md`,
+`results_semi_goodP_mesh.md`):
+
+| problem | m | S: factor / cycles / WU | S op.cx | M' | M(injection) |
+|---|---|---|---|---|---|
+| shear Pe 20 | 127 | 0.072 / 7 / 914 | 11.6 | diverges (241) | diverges (123) |
+| | 255 | 0.12 / 9 / 1,254 | 11.8 | diverges (246) | diverges (130) |
+| | 511 | 0.167 / 11 / 1,607 | 12.2 | diverges (251) | diverges (133) |
+| constant flow Pe 20 | 127 | 0.063 / 7 / 889 | 12.6 | diverges (921) | diverges (243) |
+| | 255 | 0.096 / 8 / 1,095 | 13.2 | diverges (953) | diverges (248) |
+| | 511 | 0.132 / 9 / 1,280 | 13.5 | diverges (953) | diverges (246) |
+
+External Markovian AMG: PyAMG AIR and RS fail on both problems, stand-alone and with GMRES (shear Pe 20 m=127/255;
+constant flow Pe 20 m=127/255, AIR factor 9.2–9.6).
+**Limits.**
+- Recirculating flow at Pe 20: S converges in two-level but diverges in this multilevel hierarchy (2.5–21).
+- S's operator complexity is high (12–13.5). The factor creeps mildly (0.06 → 0.13 / 0.07 → 0.17 for m=127 → 511).
+- S's exact Markovian twin needs k+1 coarse solves per cycle (Claim 16).
