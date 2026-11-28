@@ -525,3 +525,55 @@ converges, hold for all three flows at every size tested. Only the constant-flow
 N) are close to mesh-independent. With cell Pe held fixed, the physical Péclet number grows like $1/h$. The
 recirculating (closed streamlines) and Poiseuille (wall-bounded) flows then degrade the coarse-grid correction, so
 N's factor creeps, and in (A) Markov-Jacobi catches up by m=255–511.
+
+## Claim 16. M vs S: memory in the interpolation only (`semi_scan.py`, `semi_ml.py`, `semi_twin.py`)
+
+**Setup.** Same smoother (damped Jacobi, uniform ω), same greedy split, same restriction
+$\widehat R=[I,\;-A_{cf}(I+G+G^2)D_{ff}^{-1}]$ with $G=I-D_{ff}^{-1}A_{ff}$, same coarse operator $\widehat RAP_0$
+($P_0$ = injection).
+- **M:** after k sweeps, $x\leftarrow x+P_0(\widehat RAP_0)^{-1}\widehat Rr$, so only the C-points are corrected.
+- **S** (Alg. 4.1 / 7.2): the same coarse solve, then the correction is interpolated to the F-points from the
+  stored iterates: $x_F\leftarrow x_F+y+\sum_{\ell<k}K^\ell Hz$ (shift relation and Horner replay).
+
+$$E^M=\Pi_RT^k,\qquad E^S=QK^kQ^\sharp=(\Pi_RT\Pi_R)^k,\qquad \Pi_R=I-P_0(\widehat RAP_0)^{-1}\widehat RA .$$
+M carries the full relaxation $T^k$, which diverges when $\rho(T)>1$. S carries only the CR operator
+$\Pi_RT\Pi_R$ on range($\Pi_R$). S equals N with the complement induced by $\widehat R$ ($\widehat RAQ=0$).
+
+**S's Markovian twin is expensive.** Since $\Pi_R^2=\Pi_R$, $(I-\Pi_RMA)\Pi_R=\Pi_RT\Pi_R$, and so
+$$E^S=(I-\Pi_RMA)^k\,\Pi_R$$
+(`semi_twin.py`: holds to 1e-14 to 3e-13). The equivalent Markovian cycle is "coarse correction, then k projected
+relaxation steps $x\leftarrow x+\Pi_RM(b-Ax)$". Each step applies $\Pi_R$, i.e. one coarse solve, so it needs
+**k+1 coarse solves per cycle against S's one**. Unlike N (Claims 1 and 14), S has no cheap Markovian equivalent.
+
+**Two-level scan** (m=31, `results_semi_scan31.md`):
+- **Rescue** (M diverges, S converges) for all centered CD at cell Pe 6–20 with ω ≥ 0.6 (M 1.5–1700, S 0.002–0.16).
+- **Cost** (both converge, S ≥ 2× cheaper per digit): anisotropic Poisson with ω=1 (M 0.94–0.98, S 1e-4–0.26,
+  30–170×); recirc Pe 2 with ω=1 (M 0.98–0.99, S 0.006–0.29, 54–130×); Poisson ω=1, L=3, k=4 (M 0.79, S 0.12, 4×).
+
+**Multilevel, Alg. 7.2 vs its Markovian version** (`results_semi_ml*.md`):
+
+| problem | smoother | m | S: factor / cycles / WU | S WU/cycle | op.cx | M |
+|---|---|---|---|---|---|---|
+| shear Pe 20 (paper Table 4) | ω 0.7, k 4 | 127 | 0.072 / 7 / 914 | 131 | 11.6 | diverges (123) |
+| | | 255 | 0.12 / 9 / 1,254 | 139 | 11.8 | diverges (130) |
+| | | 511 | 0.167 / 11 / 1,607 | 146 | 12.2 | diverges (133) |
+| constant flow Pe 6 | ω 0.8, k 2 | 127 | 0.161 / 11 / 619 | 56 | 7.5 | diverges (2.1) |
+| | | 255 | 0.227 / 13 / 841 | 65 | 8.1 | diverges (2.2) |
+| | | 511 | 0.286 / 15 / 1,087 | 72 | 8.7 | diverges (2.5) |
+| shear Pe 6 | ω 0.8, k 2 | 127 | 0.216 / 12 / 430 | 36 | 5.0 | diverges (1.43) |
+| | | 255 | 0.322 / 17 / 706 | 42 | 5.5 | diverges (1.66) |
+| | | 511 | 0.427 / 21 / 918 | 44 | 5.6 | diverges (1.75) |
+| shear Pe 2 (cost) | ω 0.8, k 2 | 127 | 0.421 / 21 / 979 | 47 | 5.9 | 0.929, about 3,200 WU (est.) |
+| | | 255 | 0.59 / 35 / 1,832 | 52 | 6.3 | 0.980, about 11,900 WU (est.) |
+| | | 511 | 0.716 / 53 / 2,833 | 53 | 6.3 | 0.977, about 10,300 WU (est.) |
+
+M's WU for shear Pe 2 is extrapolated from its factor over 80 cycles (13 WU/cycle).
+**Weaker cases.** Anisotropic Poisson (ω 0.8 k 4: S 0.40, 0.74, 0.88; M 0.99 → diverges) and Poisson / recirc
+Pe 2–6 creep or stall for S in this hierarchy.
+
+**Reading.**
+- **Rescue:** adding memory to the interpolation turns a divergent cycle (M, $\rho(T)$ up to 5) into a convergent
+  one at modest extra cost per cycle (S/M WU per cycle ≈ 3–4).
+- **Cost:** where M converges slowly (the injection correction leaves F-error to the smoother), S is 3–6× cheaper
+  in total work.
+- S's factor creeps with m in this hierarchy, as in the fixed-cell-Pe families of Claim 15.
