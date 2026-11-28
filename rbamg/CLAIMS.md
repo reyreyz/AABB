@@ -711,3 +711,36 @@ So S is O(n) up to 1M unknowns, while M diverges and M' (= S without shift) dive
 - The short restriction L=1 makes S diverge in multilevel: the coarse operator must approximate the Schur complement.
 - Faster coarsening on the coarse levels (δ 0.45–0.6) breaks convergence.
 - Refinement on levels 0–1 gives 0.01–0.017 but costs about 450 WU/cycle.
+
+### Claim 17, addendum 2: optimized O(n) S (`semi_on.py` options, `results_semi_opt*.md`)
+
+**Changes against the first O(n) configuration:**
+1. Truncate the restriction before forming $A_c$: $R_f\leftarrow$ drop entries below 1e-2 × row max (`tauR=0.01`).
+2. Coarse-level split on a strength-filtered copy of $A_c$ (filter 0.3, `split_theta=0.3`), giving fewer levels.
+3. Coarse operators filtered at 1e-2 instead of 3e-3.
+4. ω=0.9 with k=2 on level 0 and k=4 on coarser levels (two-level rate $(1-\omega)^k$ = 0.01).
+5. Two refinement cycles on level 0 (`refine=0, nref=2`).
+
+| problem | m | n | S: factor / cycles | WU/cycle | WU total | op.cx | before: WU total / op.cx |
+|---|---|---|---|---|---|---|---|
+| constant flow Pe 20 | 127 | 16,129 | 0.010 / 4 | 180 | 722 | 7.95 | 1,074 / 10.97 |
+| | 255 | 65,025 | 0.011 / 5 | 190 | 949 | 8.29 | 1,167 / 11.58 |
+| | 511 | 261,121 | 0.015 / 5 | 195 | 976 | 8.47 | 1,221 / 11.88 |
+| | 1023 | 1,046,529 | 0.036 / 6 | 198 | 1,188 | 8.57 | 1,388 / 11.58 |
+| shear Pe 20 | 127 | 16,129 | 0.010 / 5 | 147 | 736 | 6.44 | 998 / 9.49 |
+| | 255 | 65,025 | 0.011 / 5 | 154 | 771 | 6.71 | 1,071 / 9.78 |
+| | 511 | 261,121 | 0.017 / 5 | 160 | 799 | 6.87 | 1,107 / 9.97 |
+| | 1023 | 1,046,529 | 0.053 / 7 | 161 | 1,126 | 6.92 | 1,589 / 10.11 |
+
+- Operator complexity drops 25–32% (to 6.4–8.6), cost per cycle 17–27% (to 147–198 WU), total work 14–33%.
+- Cycles to 1e-8: 4–7 at every size. Cost per cycle and operator complexity are bounded.
+- M on the same optimized hierarchy diverges (316 and 156 at m=255).
+
+**Limits found while tuning.**
+- Capping coarse stencils at 8–12 entries breaks S, because the coarse operator must approximate the Schur
+  complement.
+- Coarse filters ≥ 3e-2 or stronger strength thresholds trade operator complexity for factor (op.cx 7.1 at
+  factor 0.16–0.49).
+- Without the second refinement cycle (`nref=1`) the work is lower at small m (610–641 WU) but the factor creeps to
+  0.10–0.14 at m=1023.
+- The remaining creep (0.01 → 0.04–0.05 at 1M unknowns) costs one to two extra cycles.

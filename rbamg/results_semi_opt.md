@@ -1,0 +1,36 @@
+| const:20 | 255 | S L=3,tau=3e-3,refine=0 | 17 | 0.012 | 5 | 233 | 1167 | 11.58 | 3 |
+| const:20 | 255 | S L=3,tau=3e-3,refine=0,tauR=0.01 | 17 | 0.0147 | 5 | 182 | 909 | 11.51 | 2 |
+| const:20 | 255 | S L=3,tau=3e-3,refine=0,tauR=0.05 | 16 | 0.151 | 10 | 155 | 1546 | 10.23 | 2 |
+| const:20 | 255 | S L=3,tau=3e-3,refine=0,cap=12 | 24 | 7.48e+11 (no conv.) | - | 96 | inf | 5.65 | 2 |
+| const:20 | 255 | S L=3,tau=3e-3,refine=0,cap=8 | 21 | 2.64e+13 (no conv.) | - | 73 | inf | 4.52 | 2 |
+| const:20 | 255 | S L=3,tau=3e-3,refine=0,split_theta=0.1 | 15 | 0.012 | 5 | 207 | 1036 | 10.69 | 2 |
+| const:20 | 255 | S L=3,tau=3e-3,refine=0,split_theta=0.3 | 13 | 0.0141 | 5 | 207 | 1033 | 10.35 | 2 |
+| const:20 | 255 | S L=3,tau=3e-3,refine=0,k1=2 | 17 | 0.0732 | 8 | 178 | 1423 | 11.58 | 2 |
+| const:20 | 255 | S L=3,tau=3e-3,refine=0,k1=3 | 17 | 0.0215 | 6 | 206 | 1234 | 11.58 | 2 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,split_theta=0.3,tau=3e-3 | 13 | 0.0234 | 5 | 163 | 813 | 10.09 | 2 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,split_theta=0.3,tau=5e-3 | 14 | 0.0264 | 6 | 146 | 878 | 9.34 | 1 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,split_theta=0.3,tau=1e-2 | 14 | 0.0315 | 6 | 131 | 789 | 8.29 | 2 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,split_theta=0.3,tau=1e-2,nref=2 | 14 | 0.00999 | 5 | 193 | 965 | 8.29 | 1 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,split_theta=0.3,tau=3e-3,split_theta=0.5 | 11 | 0.0808 | 8 | 157 | 1256 | 9.07 | 2 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,split_theta=0.3,tau=5e-3,tauR=0.02 | 14 | 0.0611 | 7 | 139 | 974 | 8.90 | 2 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,split_theta=0.3,tau=1e-2,k0=3,k1=3 | 14 | 0.0606 | 7 | 110 | 771 | 8.29 | 1 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,split_theta=0.3,tau=1e-2,k0=3,k1=4 | 14 | 0.0419 | 6 | 130 | 779 | 8.29 | 1 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,split_theta=0.3,tau=1e-2,omega=0.8,k0=3,k1=3 | 14 | 0.0343 | 6 | 110 | 661 | 8.29 | 1 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,split_theta=0.3,tau=1e-2,omega=0.9,k0=2,k1=2 | 14 | 0.0469 | 7 | 89 | 623 | 8.29 | 1 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,split_theta=0.3,tau=1e-2,omega=0.9,k0=2,k1=4 | 14 | 0.0285 | 5 | 128 | 641 | 8.29 | 1 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,split_theta=0.3,tau=1e-2,omega=0.8,k0=2,k1=3 | 14 | 0.0509 | 7 | 109 | 760 | 8.29 | 1 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,split_theta=0.3,tau=1e-2,omega=0.8,k0=3,k1=3,omega_coarse=0.7 | 14 | 0.0538 | 7 | 110 | 771 | 8.29 | 1 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,tau=1e-2,omega=0.9,k0=2,k1=2,split_theta=0.3,tau_deep=3e-2,deep_from=4 | 15 | 0.163 | 10 | 78 | 780 | 7.18 | 1 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,tau=1e-2,omega=0.9,k0=2,k1=2,split_theta=0.3,tau_deep=3e-2,deep_from=3 | 15 | 0.314 | 15 | 76 | 1141 | 7.07 | 1 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,tau=1e-2,omega=0.9,k0=2,k1=2,split_theta=0.4 | 13 | 0.12 | 9 | 90 | 812 | 8.17 | 1 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,tau=1e-2,omega=0.9,k0=2,k1=2,split_theta=0.3,tauR=0.02 | 14 | 0.0957 | 8 | 86 | 689 | 8.20 | 2 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,tau=1e-2,omega=0.9,k0=2,k1=2,split_theta=0.3,tau_deep=5e-2,deep_from=5 | 15 | 0.491 | 24 | 79 | 1893 | 7.30 | 1 |
+| const:20 | 255 | S L=3,refine=0,tauR=0.01,tau=1e-2,omega=0.9,k0=2,k1=2,split_theta=0.3,nref=2 | 14 | 0.0145 | 5 | 131 | 655 | 8.29 | 1 |
+| const:20 | 511 | S L=3,tauR=0.01,split_theta=0.3,tau=1e-2,omega=0.9,k0=2,k1=4,refine=0,nref=2 | 16 | 0.0146 | 5 | 195 | 976 | 8.47 | 5 |
+| const:20 | 511 | S L=3,tauR=0.01,split_theta=0.3,tau=1e-2,omega=0.9,k0=2,k1=4,refine=1 | 16 | 0.0442 | 6 | 244 | 1466 | 8.47 | 5 |
+| const:20 | 511 | S L=3,tauR=0.01,split_theta=0.3,tau=1e-2,omega=0.9,k0=2,k1=4,refine=0,omega_coarse=0.7 | 16 | 0.0628 | 7 | 132 | 922 | 8.47 | 6 |
+| const:20 | 511 | S L=3,tauR=0.01,split_theta=0.3,tau=1e-2,omega=0.9,k0=2,k1=4,refine=0,tau=5e-3 | 16 | 0.0406 | 6 | 148 | 888 | 9.61 | 5 |
+| shear:20 | 511 | S L=3,tauR=0.01,split_theta=0.3,tau=1e-2,omega=0.9,k0=2,k1=4,refine=0,nref=2 | 15 | 0.0173 | 5 | 160 | 799 | 6.87 | 5 |
+| shear:20 | 511 | S L=3,tauR=0.01,split_theta=0.3,tau=1e-2,omega=0.9,k0=2,k1=4,refine=1 | 15 | 0.0339 | 6 | 198 | 1185 | 6.87 | 5 |
+| shear:20 | 511 | S L=3,tauR=0.01,split_theta=0.3,tau=1e-2,omega=0.9,k0=2,k1=4,refine=0,omega_coarse=0.7 | 15 | 0.0753 | 8 | 108 | 866 | 6.87 | 5 |
+| shear:20 | 511 | S L=3,tauR=0.01,split_theta=0.3,tau=1e-2,omega=0.9,k0=2,k1=4,refine=0,tau=5e-3 | 15 | 0.0498 | 7 | 123 | 858 | 7.78 | 5 |

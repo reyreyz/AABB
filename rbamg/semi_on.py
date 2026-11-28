@@ -4,24 +4,31 @@ k0 sweeps on level 0, k1 on coarser levels, Jacobi w, greedy split delta, LU bel
 markov=True: the Markovian version (injection, same operators)."""
 import numpy as np, scipy.sparse as sp, scipy.sparse.linalg as sla
 from ml_cycles import greedy_f_points, cf_blocks, filter_rowmax
+from ml_z73 import cap_rows
+from robust_n import drop_rel
 
 class S72:
     def __init__(self, A, k0=4, k1=4, omega=0.7, L=3, tau=1e-3, tau_deep=None, deep_from=4, delta=0.3,
-                 coarsest=150, markov=False, nnz0=None, lev=0, maxlev=40, delta_coarse=None, refine=-1, omega_coarse=None):
+                 coarsest=150, markov=False, nnz0=None, lev=0, maxlev=40, delta_coarse=None, refine=-1, omega_coarse=None, tauR=0.0, cap=0, split_theta=0.0, nref=1):
         self.A = sp.csr_matrix(A); self.n = A.shape[0]; self.nnz0 = nnz0 or self.A.nnz; self.lev = lev
-        self.k = k0 if lev == 0 else k1; self.omega = omega if (lev == 0 or omega_coarse is None) else omega_coarse; self.markov = markov; self.refine = refine
+        self.k = k0 if lev == 0 else k1; self.omega = omega if (lev == 0 or omega_coarse is None) else omega_coarse; self.markov = markov; self.refine = refine; self.nref = nref
         if self.n < coarsest or lev + 1 >= maxlev:
             self.lu = sla.splu(sp.csc_matrix(self.A)); self.lunnz = self.lu.L.nnz + self.lu.U.nnz; return
-        isF = greedy_f_points(self.A, delta if (lev == 0 or delta_coarse is None) else delta_coarse); omega = self.omega
+        As = filter_rowmax(self.A, split_theta) if (split_theta > 0 and lev > 0) else self.A
+        isF = greedy_f_points(As, delta if (lev == 0 or delta_coarse is None) else delta_coarse); omega = self.omega
         self.C, self.F, Acc, Acf, Afc, Aff = cf_blocks(self.A, isF)
         dff = Aff.diagonal(); self.D = self.A.diagonal(); Dfi = sp.diags(1 / dff)
         self.K = (sp.eye(len(self.F)) - omega * Dfi @ Aff).tocsr(); self.H = (-omega * Dfi @ Afc).tocsr()
         G = (sp.eye(len(self.F)) - Dfi @ Aff).tocsr(); Z = sp.eye(len(self.F), format="csr"); Gp = Z.copy()
         for _ in range(L - 1): Gp = (Gp @ G).tocsr(); Z = (Z + Gp).tocsr()
-        self.Rf = (-Acf @ (Z @ Dfi)).tocsr(); self.Asig = (Acc + self.Rf @ Afc).tocsr()
+        self.Rf = (-Acf @ (Z @ Dfi)).tocsr()
+        if tauR > 0: self.Rf = drop_rel(self.Rf, tauR)
+        self.Asig = (Acc + self.Rf @ Afc).tocsr()
         t = tau_deep if (tau_deep is not None and lev + 1 >= deep_from) else tau
-        self.coarse = S72(filter_rowmax(self.Asig, t), k0, k1, omega, L, tau, tau_deep, deep_from, delta, coarsest,
-                          markov, self.nnz0, lev + 1, maxlev, delta_coarse, refine, omega_coarse)
+        Acn = filter_rowmax(self.Asig, t)
+        if cap > 0: Acn = cap_rows(Acn, cap, lump=True)
+        self.coarse = S72(Acn, k0, k1, omega, L, tau, tau_deep, deep_from, delta, coarsest,
+                          markov, self.nnz0, lev + 1, maxlev, delta_coarse, refine, omega_coarse, tauR, cap, split_theta, nref)
 
     def cycle(self, b, x0, work):
         if hasattr(self, "lu"):
@@ -45,7 +52,8 @@ class S72:
         rc = r[C] + self.Rf @ r[F] + self.Asig @ d[0]
         e0 = self.coarse.cycle(rc, np.zeros(len(C)), work)
         if self.lev <= self.refine and not hasattr(self.coarse, "lu"):
-            e0 = e0 + self.coarse.cycle(rc - self.Asig @ e0, np.zeros(len(C)), work); work[0] += self.Asig.nnz / self.nnz0
+            for _ in range(self.nref):
+                e0 = e0 + self.coarse.cycle(rc - self.Asig @ e0, np.zeros(len(C)), work); work[0] += self.Asig.nnz / self.nnz0
         z = e0 - d[0]; out = xk.copy(); out[C] += z
         v = self.H @ z; s = v.copy()
         for _ in range(k - 1):
