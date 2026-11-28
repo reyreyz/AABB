@@ -121,7 +121,8 @@ class ML:
         ap = L.APc.nnz + L.APf.nnz
         self.work += {"twin": L.AFC.nnz + L.k * L.AFF.nnz + A.nnz + 2 * L.S.nnz,
                       "markovJ": (L.k + 1) * A.nnz + 2 * L.S.nnz,
-                      "markovJF": (L.k + 2) * A.nnz + 2 * L.S.nnz,
+                      "markovJF": (L.k + 1) * A.nnz + (L.AFC.nnz + L.AFF.nnz) + 2 * L.S.nnz,
+                      "markovJFk": (L.k + 1) * A.nnz + L.k * (L.AFC.nnz + L.AFF.nnz) + 2 * L.S.nnz,
                       "hat": (2 * L.k + 2) * A.nnz + L.k * (L.K.nnz + L.H.nnz) + 3 * L.S.nnz,
                       "N": (L.k + 1) * A.nnz + L.k * (L.K.nnz + L.H.nnz) + 3 * L.S.nnz + ap}[which] / self.nnz0
         if lev <= self.refine and lev + 1 < len(self.levels) and not hasattr(self.levels[lev + 1], "lu"):
@@ -152,10 +153,13 @@ class ML:
             e = self.coarse(lev, self.Rr(L, r2), which)
             x[C] += e; x[F] += L.S @ e
             return x
-        if which == "markovJ":                                       # k global Jacobi, then P~ correction
+        if which in ("markovJ", "markovJF", "markovJFk"):           # k global Jacobi (+ F-sweeps), then P~ correction
             x = x0.copy()
             for _ in range(L.k):
                 x = x + L.w * (b - A @ x) / L.D
+            nF = 1 if which == "markovJF" else (L.k if which == "markovJFk" else 0)
+            for _ in range(nF):                                      # F-sweeps (weight w_F) before the correction
+                x[F] += w * (b[F] - L.AFC @ x[C] - L.AFF @ x[F]) / L.D[F]
             r = b - A @ x
             e = self.coarse(lev, self.Rr(L, r), which)
             x[C] += e; x[F] += L.S @ e
