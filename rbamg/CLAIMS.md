@@ -485,3 +485,43 @@ With undamped Jacobi on the coarse levels instead (A), MJ diverges as well (18�
 - In (B) the twin ≈ N and is cheaper.
 
 Each class shows N beating one specific Markovian cycle in a natural setting, not every Markovian cycle.
+
+### Claim 15, addendum: m=1023 and other flows (`natural_ml.py`, `natural_ml2.py`, `results_natural_ml*.md`)
+
+**Constant flow at m=1023** (n=1,046,529):
+
+| case | N: factor / cycles | WU/cycle | WU total | op.cx | twin | Markov-Jacobi |
+|---|---|---|---|---|---|---|
+| (A2) Pe 8, ω 0.1, k 16 | 0.68 / 47 | 201 | 9,444 | 4.48 | 2.37, diverges | 0.842, not converged in 80 cycles |
+| (B2) Pe 6, ω 0.8, k 2 | 0.283 / 14 | 71 | 991 | 7.21 | 0.355 / 17 / 411 WU | 3.11, diverges |
+
+Both classes hold at 1M unknowns, and the cost per cycle is bounded (A2: 163, 184, 199, 201 WU; B2: 56, 65, 69, 71).
+The factors creep at the largest size (A2: 0.57, 0.58, 0.59, 0.68; B2: 0.06, 0.07, 0.12, 0.28).
+
+**Recirculating flow.**
+- (B) is the robust-N problem (§7.3, Pe 20, undamped Jacobi, k = 4/8; ROBUST_N.md, Claim 4): N converges in 2–4
+  cycles (factor 2.6e-6 to 3.7e-3) up to m=1023. Markov-Jacobi diverges (5e9–2.5e12). The twin (M_F) converges and is
+  cheaper. Cost per cycle 173–709 WU (op.cx 4.2–9.4).
+- (A) Pe 6, damped Jacobi ω=0.3 and k=16 on all levels, greedy, lump-0.5 $\tilde S$:
+
+| m | N: factor / cycles / WU | twin | Markov-Jacobi |
+|---|---|---|---|
+| 127 | 0.15 / 10 / 1,225 | 1.26, diverges | 0.36 / 18 / 1,567 WU |
+| 255 | 0.247 / 13 / 1,909 | 1.45, diverges | 0.465 / 24 / 2,498 WU |
+| 511 | 0.597 / 33 / 5,088 | 1.54, diverges | 0.581 / 33 / 3,606 WU |
+
+  The twin diverges at every size. N creeps, and at m=511 Markov-Jacobi catches up (the closed-streamline effect,
+  iteration 1 of SEARCH_LOG).
+
+**Poiseuille flow.**
+- (B) Pe 10, Jacobi ω=0.8, k=2, S truncated at 0.01: N = twin 0.294 → 0.477 (m=127 → 255); Markov-Jacobi diverges
+  (7.2). More accurate coarse levels (finer truncation and filtering, refinement, k_c=8) keep N at 0.28–0.29 for
+  m=127 and 0.44–0.47 for m=255.
+- (A) Pe 8, ω=0.1, k=16, red-black, one-point: twin diverges (1.43–1.48); N 0.52 → 0.77 and Markov-Jacobi 0.60 → 0.77
+  (equal at m=255, Markov-Jacobi cheaper).
+
+**Summary.** The class statements, (A) twin diverges while N converges and (B) Markov-Jacobi diverges while N
+converges, hold for all three flows at every size tested. Only the constant-flow examples (and recirc (B), robust
+N) are close to mesh-independent. With cell Pe held fixed, the physical Péclet number grows like $1/h$. The
+recirculating (closed streamlines) and Poiseuille (wall-bounded) flows then degrade the coarse-grid correction, so
+N's factor creeps, and in (A) Markov-Jacobi catches up by m=255–511.
