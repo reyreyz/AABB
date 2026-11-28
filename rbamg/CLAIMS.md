@@ -577,3 +577,57 @@ Pe 2–6 creep or stall for S in this hierarchy.
 - **Cost:** where M converges slowly (the injection correction leaves F-error to the smoother), S is 3–6× cheaper
   in total work.
 - S's factor creeps with m in this hierarchy, as in the fixed-cell-Pe families of Claim 15.
+
+### Claim 16, addendum: M with a serious interpolation (`semi_vsP.py`, `mlm_goodP.py`, `semi_ml.py`, `semi_pyamg.py`)
+
+Injection makes M a straw man, so M is rerun with the same smoother, split and restriction
+$\widehat R=[I,\,-A_{cf}(I+G+G^2)D_{ff}^{-1}]$ but a good interpolation $P=[I;W]$:
+- $W_1=-D_{ff}^{-1}A_{fc}$ (direct / one-step Jacobi);
+- $P'=P_0+Q_0\sum_{\ell<k}K^\ell H$, S's own interpolation made static (truncated at 1e-2 in multilevel);
+- in two-level also the ideal $W=-A_{ff}^{-1}A_{fc}$.
+
+The structural reason S survives: $E^M(P)=(I-\Pi_P)T^k$ contains the divergent relaxation for **every** $P$, while
+$E^S=(\Pi_RT\Pi_R)^k$ contains only the CR operator.
+
+**Two-level** (m=31, `results_semi_vsP31.md`):
+
+| problem | ρ(T) | M(P0) | M(W1) | M(P') | M(ideal) | S(P0) |
+|---|---|---|---|---|---|---|
+| shear Pe 20 | 3.87 | 214 | 165 | 161 | 165 | 0.0081 |
+| const Pe 6 | 1.29 | 1.59 | 0.77 | 0.81 | 0.77 | 0.04 |
+| shear Pe 6 | 1.02 | 0.94 | 0.45 | 0.47 | 0.45 | 0.04 |
+| shear Pe 2 | 0.97 | 0.64 | 0.34 | 0.35 | 0.34 | 0.04 |
+| Poisson | 1.00 | 0.72 | 0.25 | 0.15 | 0.15 | 0.20 |
+
+(S with $P=[I;W_1]$ diverges on the convection cases: S relies on the injection-induced complement.)
+
+**Multilevel** (`results_semi_goodP*.md`):
+
+| problem | m | S (injection + memory): factor / cycles / WU | M, $W_1$ | M, static $P'$ |
+|---|---|---|---|---|
+| shear Pe 20, ω 0.7, k 4 | 127 | 0.072 / 7 / 914 | diverges (270) | diverges (241) |
+| | 255 | 0.12 / 9 / 1,254 | diverges (272) | diverges (246) |
+| | 511 | 0.167 / 11 / 1,607 | diverges (276) | diverges (251) |
+| const Pe 6, ω 0.8, k 2 | 127 | 0.161 / 11 / 619 | diverges (3.3) | diverges (2.9) |
+| | 255 | 0.227 / 13 / 841 | diverges (3.8) | diverges (3.2) |
+| | 511 | 0.286 / 15 / 1,087 | diverges (4.2) | diverges (3.4) |
+| shear Pe 6, ω 0.8, k 2 | 127 | 0.216 / 12 / 430 | 0.789 / 79 / 1,731 | 0.799, not converged in 80 |
+| | 255 | 0.322 / 17 / 706 | diverges (1.43) | diverges (1.15) |
+| | 511 | 0.427 / 21 / 918 | diverges (2.4) | diverges (2.1) |
+| shear Pe 2, ω 0.8, k 2 | 127 | 0.421 / 21 / 979 | 0.458 / 24 / 645 | 0.441 / 23 / 621 |
+
+In multilevel, M diverges with a good interpolation even where its two-level version converges (const Pe 6, shear
+Pe 6). The divergent relaxation acts on every level, and the coarse levels have larger effective Pe. At low Pe
+(shear Pe 2), M with a good interpolation is cheaper than S.
+
+**External Markovian references** (PyAMG defaults, `results_semi_pyamg.md`):
+- shear Pe 20: AIR (4.6–5.3) and RS fail, also as GMRES preconditioners.
+- const Pe 6 and shear Pe 6: AIR converges cheaply (90–143 WU, using its own F/C relaxation); RS fails.
+
+**Statement that survives the fair comparison.**
+- With the same relaxation and restriction, **no interpolation** (injection, direct, S's own $P'$ made static, or
+  ideal in two-level) makes the Markovian cycle converge on centered convection at cell Pe 6–20 in multilevel.
+  Adding memory to the interpolation (S, injection + history replay) converges at 0.07–0.43 up to m=511.
+- At shear Pe 20, standard AMG (AIR, RS) fails as well.
+- At moderate Pe, a Markovian AMG with a different relaxation (AIR's F/C relaxation) is far cheaper. S's advantage is
+  over Markovian cycles on the **same** relaxation.
